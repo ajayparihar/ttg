@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Tic Tac Grow</title>
+  <meta name="description" content="The Tic Tac Toe that never ends - ties grow the board!">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============================================================
+     SCREEN: MAIN MENU
+     ============================================================ -->
+<div id="menu-screen" class="screen active">
+  <h1 class="game-title">Tic Tac Grow</h1>
+  <p class="game-subtitle">"The Tic Tac Toe that never ends"</p>
+
+  <div class="menu-buttons">
+    <button class="btn btn-primary" onclick="App.goToMode('single')">
+      🤖 Single Player
+    </button>
+    <button class="btn btn-primary" onclick="App.goToMode('dual')">
+      👥 Dual Player
+    </button>
+  </div>
+
+  <div style="display:flex;gap:10px;">
+    <button class="btn btn-sm" onclick="App.openSettings()">⚙️ Themes</button>
+    <button class="btn btn-sm" onclick="App.showHowToPlay()">❓ How to Play</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: MODE / DURATION SELECTION
+     ============================================================ -->
+<div id="mode-screen" class="screen">
+  <div class="screen-header">
+    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')">←</button>
+    <h2 class="screen-title" id="mode-screen-title">Choose Duration</h2>
+  </div>
+
+  <div class="duration-grid">
+    <button class="btn duration-btn" data-dur="60"  onclick="App.selectDuration(60)">
+      <span class="dur-label">1</span>
+      <span class="dur-sub">minute</span>
+    </button>
+    <button class="btn duration-btn" data-dur="120" onclick="App.selectDuration(120)">
+      <span class="dur-label">2</span>
+      <span class="dur-sub">minutes</span>
+    </button>
+    <button class="btn duration-btn" data-dur="180" onclick="App.selectDuration(180)">
+      <span class="dur-label">3</span>
+      <span class="dur-sub">minutes</span>
+    </button>
+    <button class="btn duration-btn" data-dur="300" onclick="App.selectDuration(300)">
+      <span class="dur-label">5</span>
+      <span class="dur-sub">minutes</span>
+    </button>
+    <button class="btn duration-btn" data-dur="0" onclick="App.selectDuration(0)" style="grid-column: span 2;">
+      <span class="dur-label">∞</span>
+      <span class="dur-sub">unlimited</span>
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: NAME INPUT
+     ============================================================ -->
+<div id="name-screen" class="screen">
+  <div class="screen-header">
+    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('mode')">←</button>
+    <h2 class="screen-title">Player Names</h2>
+  </div>
+
+  <div class="name-input-container">
+    <div class="player-input-group">
+      <label class="player-input-label x-label">✕ Player X (Red)</label>
+      <input type="text" id="name-x" class="player-name-input x-input"
+             placeholder="Xi" maxlength="12" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="player-input-group" id="name-o-group">
+      <label class="player-input-label o-label">◯ Player O (Blue)</label>
+      <input type="text" id="name-o" class="player-name-input o-input"
+             placeholder="Om" maxlength="12" autocomplete="off" spellcheck="false">
+    </div>
+  </div>
+
+  <button class="btn btn-primary" onclick="App.startGame()" style="max-width:340px;width:100%;">
+    🚀 Start Game
+  </button>
+</div>
+
+<!-- ============================================================
+     SCREEN: GAME
+     ============================================================ -->
+<div id="game-screen" class="screen">
+
+  <!-- HUD Top -->
+  <div class="game-hud">
+    <div class="hud-left">
+      <button class="btn btn-icon" onclick="App.pauseConfirm()" title="Menu">☰</button>
+    </div>
+
+    <div class="hud-center">
+      <div class="timer-display" id="timer-display">3:00</div>
+      <div class="scores-bar">
+        <div class="score-block x-score" id="score-x-block">
+          <span id="score-x-name">Xi</span>
+          <span class="separator">·</span>
+          <span class="score-val" id="score-x-val">0</span>
+        </div>
+        <span style="color:var(--fg-secondary);font-size:12px;">vs</span>
+        <div class="score-block o-score" id="score-o-block">
+          <span id="score-o-name">Om</span>
+          <span class="separator">·</span>
+          <span class="score-val" id="score-o-val">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-right">
+      <div style="text-align:right;">
+        <div class="grid-size-badge" id="grid-size-badge">3×3</div>
+        <div class="mode-info">
+          <span class="mode-badge" id="mode-badge">Dual</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main game area -->
+  <div class="game-area">
+    <!-- Current player pill -->
+    <div class="turn-indicator turn-x" id="turn-indicator">Xi's Turn</div>
+
+    <!-- Grid wrapper (handles zoom/pan) -->
+    <div class="grid-wrapper" id="grid-wrapper">
+      <div class="grid-zoom-container" id="grid-zoom-container">
+        <!-- Cell elements are injected here by Render.buildGrid() -->
+        <div class="game-grid turn-x" id="game-grid"></div>
+      </div>
+
+      <!-- Shown when zoomed in, blocking cell clicks -->
+      <div class="zoom-lock-overlay" id="zoom-lock">
+        <div class="zoom-lock-msg">🔍 Zoom out to play</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls Bottom -->
+  <div class="game-controls">
+    <div class="controls-left">
+      <button class="btn btn-icon undo-btn" id="undo-btn"
+              onclick="App.undo()" title="Undo last move (1 use)">
+        ↩
+      </button>
+      <!-- AI thinking indicator — shown only during AI's turn -->
+      <div class="ai-thinking" id="ai-thinking" style="display:none;">
+        AI <span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>
+      </div>
+    </div>
+
+    <div class="controls-center" id="controls-hint"></div>
+
+    <div class="controls-right">
+      <button class="btn btn-icon" onclick="App.zoom(-1)" title="Zoom out">−</button>
+      <div class="zoom-display" id="zoom-display">100%</div>
+      <button class="btn btn-icon" onclick="App.zoom(1)"  title="Zoom in">+</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: GAME OVER
+     ============================================================ -->
+<div id="gameover-screen" class="screen">
+  <div class="gameover-card">
+    <div class="gameover-emoji" id="go-emoji">🎉</div>
+    <div class="gameover-title" id="go-title">Xi Wins!</div>
+
+    <!-- Score rows are injected by endGame() -->
+    <div class="gameover-scores" id="go-scores"></div>
+
+    <div class="gameover-meta" id="go-meta">3×3 grid · 3 minutes</div>
+
+    <div class="gameover-buttons">
+      <button class="btn btn-x" onclick="App.rematch()">🔄 Rematch</button>
+      <button class="btn"       onclick="App.goHome()">🏠 Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SETTINGS PANEL
+     ============================================================ -->
+<div class="settings-overlay" id="settings-overlay" onclick="App.closeSettings()"></div>
+<div class="settings-panel" id="settings-panel">
+  <div>
+    <div class="settings-title">⚙️ Settings</div>
+  </div>
+
+  <div>
+    <div class="settings-section-title">Color Theme</div>
+    <div class="theme-grid">
+      <button class="btn theme-btn active" data-theme="default" onclick="App.setTheme('default')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#FF3366,#3366FF)"></div>
+        Default
+      </button>
+      <button class="btn theme-btn" data-theme="ocean" onclick="App.setTheme('ocean')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#FF6B35,#00D9FF)"></div>
+        Ocean
+      </button>
+      <button class="btn theme-btn" data-theme="forest" onclick="App.setTheme('forest')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#FF5722,#4CAF50)"></div>
+        Forest
+      </button>
+      <button class="btn theme-btn" data-theme="neon" onclick="App.setTheme('neon')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#FF00FF,#00FFFF)"></div>
+        Neon
+      </button>
+      <button class="btn theme-btn" data-theme="sunset" onclick="App.setTheme('sunset')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#FF4500,#FFC200)"></div>
+        Sunset
+      </button>
+    </div>
+  </div>
+
+  <div>
+    <div class="settings-section-title">About</div>
+    <p style="font-size:13px;color:var(--fg-secondary);line-height:1.6;">
+      Tic Tac Grow v1.0<br>
+      Ties grow the board!<br>
+      Score points for chains of 3+ on grids 4×4 and larger.
+    </p>
+  </div>
+
+  <button class="btn" onclick="App.closeSettings()" style="margin-top:auto;">✕ Close</button>
+</div>
+
+<!-- ============================================================
+     HOW TO PLAY PANEL
+     ============================================================ -->
+<div class="settings-overlay" id="help-overlay" onclick="App.closeHelp()"></div>
+<div class="settings-panel" id="help-panel" style="max-width:340px;">
+  <div>
+    <div class="settings-title">❓ How to Play</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--fg-secondary);">
+    <div>
+      <strong style="color:var(--fg-primary);">🎯 Goal</strong><br>
+      Outscore your opponent when the timer ends.
+    </div>
+    <div>
+      <strong style="color:var(--fg-primary);">📏 The Grid Grows</strong><br>
+      On a 3×3, classic rules apply — first to 3-in-a-row wins!<br>
+      On a <em>tie</em>, the board expands to 4×4, then 5×5, and so on.
+    </div>
+    <div>
+      <strong style="color:var(--fg-primary);">🏆 Scoring (4×4+)</strong><br>
+      3-in-a-row → <strong style="color:var(--color-x);">10 pts</strong><br>
+      4-in-a-row → <strong style="color:var(--color-x);">20 pts</strong><br>
+      5-in-a-row → <strong style="color:var(--color-x);">30 pts</strong><br>
+      6-in-a-row → <strong style="color:var(--color-x);">40 pts</strong><br>
+      Each extra cell adds 10 more pts.
+    </div>
+    <div>
+      <strong style="color:var(--fg-primary);">↩ Undo</strong><br>
+      One undo per game. Use it wisely!
+    </div>
+    <div>
+      <strong style="color:var(--fg-primary);">🔍 Zoom</strong><br>
+      Use +/− buttons (or pinch on mobile) to zoom the board. Zoom out to place marks.
+    </div>
+    <div>
+      <strong style="color:var(--fg-primary);">🤖 vs AI</strong><br>
+      The AI will try to win, block you, and score chains. Can you outsmart it?
+    </div>
+  </div>
+
+  <button class="btn" onclick="App.closeHelp()" style="margin-top:auto;">✕ Close</button>
+</div>
+
+<!-- ============================================================
+     TOAST & CONFETTI CONTAINERS
+     ============================================================ -->
+<div class="toast-container"   id="toast-container"></div>
+<div class="confetti-container" id="confetti-container"></div>
+
+<!-- ============================================================
+     PAUSE MODAL
+     ============================================================ -->
+<div class="settings-overlay" id="pause-overlay" style="z-index:150;display:none;"></div>
+<div id="pause-modal" style="
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:var(--card-bg); border:1px solid var(--card-border);
+  border-radius:20px; padding:28px 24px; z-index:151;
+  display:none; flex-direction:column; gap:14px;
+  min-width:260px; text-align:center; box-shadow:var(--shadow);
+">
+  <div style="font-size:24px;font-weight:900;">⏸ Game Paused</div>
+  <div style="font-size:14px;color:var(--fg-secondary);">What would you like to do?</div>
+  <button class="btn btn-primary" onclick="App.resumeGame()">▶ Resume</button>
+  <button class="btn"             onclick="App.quitGame()">🏠 Quit to Menu</button>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT — loaded in dependency order
+     (classic scripts share the global scope, preserving
+      onclick="App.xxx()" inline handlers without a build step)
+     ============================================================ -->
+<script src="js/constants.js"></script>
+<script src="js/state.js"></script>
+<script src="js/svg.js"></script>
+<script src="js/grid.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/render.js"></script>
+<script src="js/confetti.js"></script>
+<script src="js/zoom.js"></script>
+<script src="js/game.js"></script>
+<script src="js/app.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
