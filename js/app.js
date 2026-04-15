@@ -37,7 +37,7 @@ const App = {
    */
   goToMode(mode) {
     this.selectedMode = mode;
-    const label = mode === 'single' ? '🤖 Single Player' : '👥 Dual Player';
+    const label = mode === 'single' ? 'Single Player' : 'Dual Player';
     document.getElementById('mode-screen-title').textContent = `${label} — Duration`;
     this.showScreen('mode');
   },
@@ -119,7 +119,7 @@ const App = {
     document.getElementById('score-x-val').textContent  = '0';
     document.getElementById('score-o-val').textContent  = '0';
     document.getElementById('mode-badge').textContent   =
-      State.mode === 'single' ? '🤖 AI' : '👥 Local';
+      State.mode === 'single' ? 'AI' : 'Local';
 
     // Reset undo button
     const undoBtn = document.getElementById('undo-btn');
@@ -221,7 +221,7 @@ const App = {
     Render.updateTurnIndicator();
     Render.setZoomDisplay(State.zoomLevel);
 
-    this.showToast('Undo used! ↩');
+    this.showToast('Undo used!');
   },
 
   /* ---- Zoom ---- */
@@ -325,7 +325,7 @@ const App = {
     });
 
     try { localStorage.setItem('ttg_theme', name); } catch (_) {}
-    this.showToast(`Theme: ${name.charAt(0).toUpperCase() + name.slice(1)} 🎨`);
+    this.showToast(`Theme: ${name.charAt(0).toUpperCase() + name.slice(1)}`);
   },
 
   /* ---- Toast notifications ---- */

@@ -57,13 +57,11 @@ const Render = {
           // Pre-existing X — stamp without draw animation
           cell.classList.add('x-marked', 'marked');
           cell.innerHTML = makeXSvg();
-          if (!isNew) this._removeMarkAnimation(cell);
 
         } else if (val === 'O') {
           // Pre-existing O — stamp without draw animation
           cell.classList.add('o-marked', 'marked');
           cell.innerHTML = makeOSvg();
-          if (!isNew) this._removeMarkAnimation(cell);
 
         } else {
           // Empty cell — add ghost preview and click handler
@@ -82,18 +80,6 @@ const Render = {
     this.updateGridSizeBadge();
   },
 
-  /**
-   * Removes the draw-on CSS animation from all .mark-path elements inside a cell.
-   * Called for pre-existing marks when the board is rebuilt after expansion.
-   * @param {HTMLElement} cell
-   */
-  _removeMarkAnimation(cell) {
-    cell.querySelectorAll('.mark-path').forEach(path => {
-      path.style.animation       = 'none';
-      path.style.strokeDashoffset = '0';
-    });
-  },
-
   /* ---- Single cell update ---- */
 
   /**
@@ -106,7 +92,6 @@ const Render = {
     const cell = this.getCell(r, c);
     if (!cell) return;
 
-    cell.classList.remove('cell-ghost');
     cell.classList.add(`${player.toLowerCase()}-marked`, 'marked');
     cell.innerHTML = player === 'X' ? makeXSvg() : makeOSvg();
 

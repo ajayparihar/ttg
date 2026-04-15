@@ -4,7 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Tic Tac Grow</title>
-  <meta name="description" content="The Tic Tac Toe that never ends - ties grow the board!">
+  <meta name="description" content="The Tic Tac Toe that never ends">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
@@ -20,16 +28,15 @@
 
   <div class="menu-buttons">
     <button class="btn btn-primary" onclick="App.goToMode('single')">
-      🤖 Single Player
+      <i class="fa-solid fa-user"></i> Single Player
     </button>
     <button class="btn btn-primary" onclick="App.goToMode('dual')">
-      👥 Dual Player
-    </button>
+      <i class="fa-solid fa-user-group"></i>Dual Player</button>
   </div>
 
   <div style="display:flex;gap:10px;">
-    <button class="btn btn-sm" onclick="App.openSettings()">⚙️ Themes</button>
-    <button class="btn btn-sm" onclick="App.showHowToPlay()">❓ How to Play</button>
+    <button class="btn btn-sm" onclick="App.openSettings()"><i class="fa-solid fa-palette"></i></button>
+    <button class="btn btn-sm" onclick="App.showHowToPlay()"><i class="fa-solid fa-question-circle"></i></button>
   </div>
 </div>
 
@@ -77,7 +84,7 @@
 
   <div class="name-input-container">
     <div class="player-input-group">
-      <label class="player-input-label x-label">✕ Player X (Red)</label>
+      <label class="player-input-label x-label">Player X (Red)</label>
       <input type="text" id="name-x" class="player-name-input x-input"
              placeholder="Xi" maxlength="12" autocomplete="off" spellcheck="false">
     </div>
@@ -89,7 +96,7 @@
   </div>
 
   <button class="btn btn-primary" onclick="App.startGame()" style="max-width:340px;width:100%;">
-    🚀 Start Game
+    <i class="fa-solid fa-rocket"></i> Start Game
   </button>
 </div>
 
@@ -101,7 +108,7 @@
   <!-- HUD Top -->
   <div class="game-hud">
     <div class="hud-left">
-      <button class="btn btn-icon" onclick="App.pauseConfirm()" title="Menu">☰</button>
+      <button class="btn btn-icon" onclick="App.pauseConfirm()" title="Menu">Menu</button>
     </div>
 
     <div class="hud-center">
@@ -145,7 +152,7 @@
 
       <!-- Shown when zoomed in, blocking cell clicks -->
       <div class="zoom-lock-overlay" id="zoom-lock">
-        <div class="zoom-lock-msg">🔍 Zoom out to play</div>
+        <div class="zoom-lock-msg">Zoom out to play</div>
       </div>
     </div>
   </div>
@@ -155,7 +162,7 @@
     <div class="controls-left">
       <button class="btn btn-icon undo-btn" id="undo-btn"
               onclick="App.undo()" title="Undo last move (1 use)">
-        ↩
+        <i class="fa-solid fa-rotate-left"></i>
       </button>
       <!-- AI thinking indicator — shown only during AI's turn -->
       <div class="ai-thinking" id="ai-thinking" style="display:none;">
@@ -178,7 +185,7 @@
      ============================================================ -->
 <div id="gameover-screen" class="screen">
   <div class="gameover-card">
-    <div class="gameover-emoji" id="go-emoji">🎉</div>
+    <div class="gameover-emoji" id="go-emoji"></div>
     <div class="gameover-title" id="go-title">Xi Wins!</div>
 
     <!-- Score rows are injected by endGame() -->
@@ -187,8 +194,8 @@
     <div class="gameover-meta" id="go-meta">3×3 grid · 3 minutes</div>
 
     <div class="gameover-buttons">
-      <button class="btn btn-x" onclick="App.rematch()">🔄 Rematch</button>
-      <button class="btn"       onclick="App.goHome()">🏠 Menu</button>
+      <button class="btn btn-x" onclick="App.rematch()"><i class="fa-solid fa-redo"></i> Rematch</button>
+      <button class="btn"       onclick="App.goHome()"><i class="fa-solid fa-home"></i> Menu</button>
     </div>
   </div>
 </div>
@@ -199,31 +206,31 @@
 <div class="settings-overlay" id="settings-overlay" onclick="App.closeSettings()"></div>
 <div class="settings-panel" id="settings-panel">
   <div>
-    <div class="settings-title">⚙️ Settings</div>
+    <div class="settings-title"><i class="fa-solid fa-cog"></i> Settings</div>
   </div>
 
   <div>
     <div class="settings-section-title">Color Theme</div>
     <div class="theme-grid">
       <button class="btn theme-btn active" data-theme="default" onclick="App.setTheme('default')">
-        <div class="theme-swatch" style="background:linear-gradient(135deg,#FF3366,#3366FF)"></div>
-        Default
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#E8344A,#2C6EF2)"></div>
+        <i class="fa-solid fa-palette"></i>
       </button>
       <button class="btn theme-btn" data-theme="ocean" onclick="App.setTheme('ocean')">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF6B35,#00D9FF)"></div>
-        Ocean
+        <i class="fa-solid fa-water"></i>
       </button>
       <button class="btn theme-btn" data-theme="forest" onclick="App.setTheme('forest')">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF5722,#4CAF50)"></div>
-        Forest
+        <i class="fa-solid fa-tree"></i>
       </button>
       <button class="btn theme-btn" data-theme="neon" onclick="App.setTheme('neon')">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF00FF,#00FFFF)"></div>
-        Neon
+        <i class="fa-solid fa-bolt"></i>
       </button>
       <button class="btn theme-btn" data-theme="sunset" onclick="App.setTheme('sunset')">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF4500,#FFC200)"></div>
-        Sunset
+        <i class="fa-solid fa-sun"></i>
       </button>
     </div>
   </div>
@@ -237,7 +244,7 @@
     </p>
   </div>
 
-  <button class="btn" onclick="App.closeSettings()" style="margin-top:auto;">✕ Close</button>
+  <button class="btn" onclick="App.closeSettings()" style="margin-top:auto;"><i class="fa-solid fa-times"></i> Close</button>
 </div>
 
 <!-- ============================================================
@@ -246,21 +253,21 @@
 <div class="settings-overlay" id="help-overlay" onclick="App.closeHelp()"></div>
 <div class="settings-panel" id="help-panel" style="max-width:340px;">
   <div>
-    <div class="settings-title">❓ How to Play</div>
+    <div class="settings-title">How to Play</div>
   </div>
 
   <div style="display:flex;flex-direction:column;gap:16px;font-size:14px;line-height:1.7;color:var(--fg-secondary);">
     <div>
-      <strong style="color:var(--fg-primary);">🎯 Goal</strong><br>
+      <strong style="color:var(--fg-primary);">Goal</strong><br>
       Outscore your opponent when the timer ends.
     </div>
     <div>
-      <strong style="color:var(--fg-primary);">📏 The Grid Grows</strong><br>
+      <strong style="color:var(--fg-primary);">The Grid Grows</strong><br>
       On a 3×3, classic rules apply — first to 3-in-a-row wins!<br>
       On a <em>tie</em>, the board expands to 4×4, then 5×5, and so on.
     </div>
     <div>
-      <strong style="color:var(--fg-primary);">🏆 Scoring (4×4+)</strong><br>
+      <strong style="color:var(--fg-primary);">Scoring (4×4+)</strong><br>
       3-in-a-row → <strong style="color:var(--color-x);">10 pts</strong><br>
       4-in-a-row → <strong style="color:var(--color-x);">20 pts</strong><br>
       5-in-a-row → <strong style="color:var(--color-x);">30 pts</strong><br>
@@ -268,20 +275,20 @@
       Each extra cell adds 10 more pts.
     </div>
     <div>
-      <strong style="color:var(--fg-primary);">↩ Undo</strong><br>
+      <strong style="color:var(--fg-primary);">Undo</strong><br>
       One undo per game. Use it wisely!
     </div>
     <div>
-      <strong style="color:var(--fg-primary);">🔍 Zoom</strong><br>
+      <strong style="color:var(--fg-primary);">Zoom</strong><br>
       Use +/− buttons (or pinch on mobile) to zoom the board. Zoom out to place marks.
     </div>
     <div>
-      <strong style="color:var(--fg-primary);">🤖 vs AI</strong><br>
+      <strong style="color:var(--fg-primary);">vs AI</strong><br>
       The AI will try to win, block you, and score chains. Can you outsmart it?
     </div>
   </div>
 
-  <button class="btn" onclick="App.closeHelp()" style="margin-top:auto;">✕ Close</button>
+  <button class="btn" onclick="App.closeHelp()" style="margin-top:auto;"><i class="fa-solid fa-times"></i> Close</button>
 </div>
 
 <!-- ============================================================
@@ -301,10 +308,10 @@
   display:none; flex-direction:column; gap:14px;
   min-width:260px; text-align:center; box-shadow:var(--shadow);
 ">
-  <div style="font-size:24px;font-weight:900;">⏸ Game Paused</div>
+  <div style="font-size:24px;font-weight:900;">Game Paused</div>
   <div style="font-size:14px;color:var(--fg-secondary);">What would you like to do?</div>
-  <button class="btn btn-primary" onclick="App.resumeGame()">▶ Resume</button>
-  <button class="btn"             onclick="App.quitGame()">🏠 Quit to Menu</button>
+  <button class="btn btn-primary" onclick="App.resumeGame()"><i class="fa-solid fa-play"></i> Resume</button>
+  <button class="btn"             onclick="App.quitGame()"><i class="fa-solid fa-sign-out-alt"></i> Quit to Menu</button>
 </div>
 
 <!-- ============================================================

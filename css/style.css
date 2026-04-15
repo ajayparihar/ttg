@@ -5,14 +5,14 @@
   --bg-primary: #0a0a0a;
   --fg-primary: #e5e5e5;
   --fg-secondary: #999;
-  --color-x: #FF3366;
-  --color-o: #3366FF;
-  --color-x-light: rgba(255,51,102,0.12);
-  --color-o-light: rgba(51,102,255,0.12);
-  --color-x-glow: rgba(255,51,102,0.5);
-  --color-o-glow: rgba(51,102,255,0.5);
-  --board-bg: #ffffff;
-  --grid-line: #ddd;
+  --color-x: #E8344A;
+  --color-o: #2C6EF2;
+  --color-x-light: rgba(232,52,74,0.12);
+  --color-o-light: rgba(44,110,242,0.12);
+  --color-x-glow: rgba(232,52,74,0.5);
+  --color-o-glow: rgba(44,110,242,0.5);
+  --board-bg: #111111;
+  --grid-line: #333;
   --card-bg: #161616;
   --card-border: #2a2a2a;
   --btn-bg: #1e1e1e;
@@ -22,7 +22,7 @@
   --radius: 12px;
   --radius-sm: 8px;
   --transition: 0.2s ease;
-  --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 /* THEMES */
@@ -36,8 +36,8 @@
   --color-o-light: rgba(0,217,255,0.12);
   --color-x-glow: rgba(255,107,53,0.5);
   --color-o-glow: rgba(0,217,255,0.5);
-  --board-bg: #F0F8FF;
-  --grid-line: #B8D4E8;
+  --board-bg: #0A2A4A;
+  --grid-line: #1A4A6A;
   --card-bg: #00295A;
   --card-border: #003875;
   --btn-bg: #00295A;
@@ -54,8 +54,8 @@
   --color-o-light: rgba(76,175,80,0.12);
   --color-x-glow: rgba(255,87,34,0.5);
   --color-o-glow: rgba(76,175,80,0.5);
-  --board-bg: #FAFFF0;
-  --grid-line: #C5E1A5;
+  --board-bg: #2A4A2A;
+  --grid-line: #4A6A4A;
   --card-bg: #1F3A1F;
   --card-border: #2E5A2E;
   --btn-bg: #1F3A1F;
@@ -90,8 +90,8 @@
   --color-o-light: rgba(255,194,0,0.12);
   --color-x-glow: rgba(255,69,0,0.5);
   --color-o-glow: rgba(255,194,0,0.5);
-  --board-bg: #FFFAF0;
-  --grid-line: #FFD9B3;
+  --board-bg: #2A1A00;
+  --grid-line: #5A3A00;
   --card-bg: #220D00;
   --card-border: #3D1800;
   --btn-bg: #220D00;
@@ -225,6 +225,12 @@ body {
   opacity: 0.35;
   cursor: not-allowed;
   transform: none;
+}
+
+.btn i {
+  font-size: 20px;
+  line-height: 1;
+  margin-right: 8px;
 }
 
 .btn-primary {
@@ -439,13 +445,15 @@ body {
 
 /* Score pop animation on point gain */
 .score-flash {
-  animation: scoreFlash 0.4s ease;
+  animation: scoreFlash 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes scoreFlash {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.3); }
-  100% { transform: scale(1); }
+  0%   { transform: scale(1); color: var(--fg-primary); }
+  25%  { transform: scale(1.2); color: var(--accent); }
+  50%  { transform: scale(1.4); color: var(--accent); }
+  75%  { transform: scale(1.2); color: var(--fg-primary); }
+  100% { transform: scale(1); color: var(--fg-primary); }
 }
 
 /* Grid size indicator */
@@ -578,46 +586,46 @@ body {
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* SVG marks */
-.cell svg {
-  width: 65%;
-  height: 65%;
+/* Mark text */
+.cell .mark-text {
+  font-size: 48px;
+  font-weight: 700;
   position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  animation: markAppear 0.3s ease-out;
 }
 
-/* X & O stroke colours inherit from CSS variables */
-.x-mark { stroke: var(--color-x); }
-.o-mark { stroke: var(--color-o); }
-
-/* Animated draw-on effect for marks */
-.mark-path {
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
-  stroke-width: 8;
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
-  animation: drawMark 0.3s ease-out forwards;
+@keyframes markAppear {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-@keyframes drawMark {
-  to { stroke-dashoffset: 0; }
-}
+/* X & O colors */
+.x-mark { color: var(--color-x); }
+.o-mark { color: var(--color-o); }
 
 /* Ghost preview of current player's mark on hover */
 .cell-ghost {
   position: absolute;
-  width: 65%;
-  height: 65%;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
+  font-size: 32px;
+  font-weight: 700;
 }
 
-.cell:hover:not(.marked):not(.disabled) .cell-ghost { opacity: 0.25; }
+.cell:hover:not(.marked) .cell-ghost {
+  opacity: 0.25;
+}
 
 /* Win strike overlay drawn as SVG on top of the grid */
 .win-strike-svg {
@@ -768,9 +776,23 @@ body {
 }
 
 .gameover-emoji {
-  font-size: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  font-size: 36px;
+  font-weight: 700;
   line-height: 1;
   animation: emojiPop 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+
+.winner-initial.x-color { background: var(--color-x); color: white; }
+.winner-initial.o-color { background: var(--color-o); color: white; }
+
+.draw-icon {
+  font-size: 48px;
 }
 
 @keyframes emojiPop {
@@ -874,6 +896,13 @@ body {
   font-size: 20px;
   font-weight: 800;
   margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-title i {
+  font-size: 18px;
 }
 
 .settings-section-title {
@@ -897,6 +926,10 @@ body {
   padding: 10px 6px;
   font-size: 12px;
   border-radius: var(--radius-sm);
+}
+
+.theme-btn i {
+  font-size: 24px;
 }
 
 .theme-swatch {
@@ -981,13 +1014,15 @@ body {
    EXPANSION ANIMATION
    ============================================================ */
 @keyframes gridExpand {
-  0%   { transform: scale(0.95); opacity: 0.7; }
-  50%  { transform: scale(1.02); }
-  100% { transform: scale(1); opacity: 1; }
+  0%   { transform: scale(0.8); opacity: 0.5; filter: blur(2px); }
+  25%  { transform: scale(1.1); opacity: 0.8; filter: blur(1px); }
+  50%  { transform: scale(0.95); opacity: 1; filter: blur(0px); }
+  75%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
 
 .grid-expanding {
-  animation: gridExpand 0.5s ease;
+  animation: gridExpand 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 /* ============================================================

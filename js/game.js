@@ -101,7 +101,7 @@ function _processMoveOnLargeGrid(r, c, player) {
     Render.updateScore(player);
 
     // Toast for notable scores
-    if (pts >= 30) App.showToast(`${State.names[player]} +${pts} pts! 🔥`);
+    if (pts >= 30) App.showToast(`${State.names[player]} +${pts} pts!`);
     else if (pts >= 20) App.showToast(`${State.names[player]} +${pts} pts!`);
   }
 
@@ -159,7 +159,7 @@ function expandGrid() {
   State.grid.push(Array(State.gridSize).fill(''));
 
   Render.animateGridExpand();
-  App.showToast(`Board grows to ${State.gridSize}×${State.gridSize}! 📈`);
+  App.showToast(`Board grows to ${State.gridSize}×${State.gridSize}!`);
 
   // Short delay so the expand animation finishes before the DOM rebuild
   setTimeout(() => {
@@ -200,13 +200,13 @@ function _renderGameOverScreen(winner, reason) {
   const isDraw = (winner === 'draw' || (!winner && State.scores.X === State.scores.O));
 
   if (isDraw) {
-    goEmoji.textContent = '🤝';
+    goEmoji.innerHTML = '<div class="draw-icon"></div>';
     goTitle.textContent = "It's a Draw!";
     goTitle.className   = 'gameover-title draw';
   } else {
     // Determine winner by score if not explicitly passed
     const w = winner || (State.scores.X > State.scores.O ? 'X' : 'O');
-    goEmoji.textContent = '🎉';
+    goEmoji.innerHTML = `<div class="winner-initial ${w.toLowerCase()}-color">${w}</div>`;
     goTitle.textContent = `${State.names[w]} Wins!`;
     goTitle.className   = `gameover-title win-${w.toLowerCase()}`;
     launchConfetti(w);
@@ -219,11 +219,11 @@ function _renderGameOverScreen(winner, reason) {
   goScores.innerHTML = `
     <div class="gameover-score-row x-row ${isXWinner && reason !== 'classic' ? 'winner-row' : ''}">
       <span>${State.names.X}</span>
-      <span>${reason === 'classic' && winner === 'X' ? '👑 Winner' : State.scores.X + ' pts'}</span>
+      <span>${reason === 'classic' && winner === 'X' ? 'Winner' : State.scores.X + 'pts'}</span>
     </div>
     <div class="gameover-score-row o-row ${isOWinner && reason !== 'classic' ? 'winner-row' : ''}">
       <span>${State.names.O}</span>
-      <span>${reason === 'classic' && winner === 'O' ? '👑 Winner' : State.scores.O + ' pts'}</span>
+      <span>${reason === 'classic' && winner === 'O' ? 'Winner' : State.scores.O + ' pts'}</span>
     </div>
   `;
 
