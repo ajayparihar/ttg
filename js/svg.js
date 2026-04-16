@@ -8,24 +8,47 @@
    ============================================================ */
 
 /**
- * Builds the X mark as hand-drawn SVG.
+ * Returns a small randomized transform for each mark.
+ * This adds subtle rotation, flips, and size variance.
+ * @returns {string}
+ */
+function randomMarkTransform() {
+  const rotate = (Math.random() * 20 - 10).toFixed(1); // -10° to 10°
+  const scale = 0.96 + Math.random() * 0.08;             // 0.96 to 1.04
+  const flipX = Math.random() < 0.12 ? -1 : 1;
+  const flipY = Math.random() < 0.12 ? -1 : 1;
+  return `translate(50 50) rotate(${rotate}) scale(${flipX * scale} ${flipY * scale}) translate(-50 -50)`;
+}
+
+/**
+ * Builds a text-based mark from the font.
+ * @param {string} char
+ * @param {string} cls
  * @returns {string} HTML string.
  */
-function makeXSvg() {
-  return `<svg class="mark-svg x-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <line x1="15" y1="15" x2="85" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
-    <line x1="85" y1="15" x2="15" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+function makeMarkSvg(char, cls) {
+  const fontSize = 68 + Math.round(Math.random() * 8); // subtle size variation
+  return `<svg class="mark-svg ${cls}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <g transform="${randomMarkTransform()}">
+      <text x="50" y="75" text-anchor="middle" font-size="${fontSize}" font-family="Excalifont" fill="currentColor">${char}</text>
+    </g>
   </svg>`;
 }
 
 /**
- * Builds the O mark as hand-drawn SVG.
+ * Builds the X mark as text from font.
+ * @returns {string} HTML string.
+ */
+function makeXSvg() {
+  return makeMarkSvg('X', 'x-mark');
+}
+
+/**
+ * Builds the O mark as text from font.
  * @returns {string} HTML string.
  */
 function makeOSvg() {
-  return `<svg class="mark-svg o-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="50" cy="50" rx="35" ry="40" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
-  </svg>`;
+  return makeMarkSvg('O', 'o-mark');
 }
 
 /**
@@ -33,10 +56,7 @@ function makeOSvg() {
  * @returns {string} HTML string.
  */
 function makeGhostX() {
-  return `<svg class="mark-svg x-mark ghost" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <line x1="15" y1="15" x2="85" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
-    <line x1="85" y1="15" x2="15" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
-  </svg>`;
+  return makeMarkSvg('X', 'x-mark ghost');
 }
 
 /**
@@ -44,7 +64,5 @@ function makeGhostX() {
  * @returns {string} HTML string.
  */
 function makeGhostO() {
-  return `<svg class="mark-svg o-mark ghost" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="50" cy="50" rx="35" ry="40" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
-  </svg>`;
+  return makeMarkSvg('O', 'o-mark ghost');
 }

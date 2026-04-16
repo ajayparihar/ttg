@@ -172,6 +172,9 @@ function switchTurn() {
 function triggerAI() {
   document.getElementById('ai-thinking').style.display = 'flex';
 
+  // Random delay to simulate human thinking: 500ms to 2500ms
+  const delay = 500 + Math.random() * 2000;
+
   State.aiTimeout = setTimeout(() => {
     document.getElementById('ai-thinking').style.display = 'none';
     if (!State.gameActive) return;
@@ -179,7 +182,7 @@ function triggerAI() {
     // AI receives a copy so the lookahead cannot mutate the real board
     const move = AI.getBestMove(copyGrid(State.grid), 'O', 'X');
     if (move) makeMove(move.r, move.c, /* isAI */ true);
-  }, AI_DELAY_MS);
+  }, delay);
 }
 
 /* ---- Grid expansion ---- */

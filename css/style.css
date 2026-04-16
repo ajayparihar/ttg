@@ -604,8 +604,12 @@ body {
 }
 
 /* X & O colors */
-.x-mark { color: var(--color-x); }
-.o-mark { color: var(--color-o); }
+.x-mark { color: var(--color-x); filter: drop-shadow(0 0 8px var(--color-x-glow)); }
+.o-mark { color: var(--color-o); filter: drop-shadow(0 0 8px var(--color-o-glow)); }
+
+/* Win strike colors */
+.win-strike-line.x-strike { color: var(--color-x); }
+.win-strike-line.o-strike { color: var(--color-o); }
 
 /* Ghost preview of current player's mark on hover */
 .cell-ghost {
@@ -643,13 +647,14 @@ body {
 
 .win-strike-line {
   stroke-linecap: round;
+  stroke-linejoin: round;
   fill: none;
   stroke-width: 6;
-  opacity: 0.85;
+  opacity: 0.95;
   stroke-dasharray: 2000;
   stroke-dashoffset: 2000;
-  animation: drawStrike 0.5s ease-out forwards;
-  filter: drop-shadow(0 0 8px currentColor);
+  animation: drawStrike 0.45s ease-out forwards;
+  filter: drop-shadow(0 0 16px currentColor);
 }
 
 @keyframes drawStrike {

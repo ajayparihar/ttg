@@ -253,15 +253,17 @@ const Render = {
         const dx = x2 - x1;
         const dy = y2 - y1;
         const length = Math.sqrt(dx * dx + dy * dy);
-        const offset = 5; // pixels
+        const baseOffset = Math.min(14, length * 0.08);
+        const jitter = Math.random() * 6 - 3;
+        const offset = baseOffset + jitter;
         const cx = (x1 + x2) / 2 - (dy / length) * offset;
         const cy = (y1 + y2) / 2 + (dx / length) * offset;
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
-        path.setAttribute('stroke', player === 'X' ? 'var(--color-x)' : 'var(--color-o)');
+        path.setAttribute('stroke', 'currentColor');
         path.setAttribute('fill', 'none');
-        path.classList.add('win-strike-line');
+        path.classList.add('win-strike-line', player === 'X' ? 'x-strike' : 'o-strike');
         svg.appendChild(path);
 
         cells.forEach(([r, c]) => this.getCell(r, c)?.classList.add('win-cell'));
