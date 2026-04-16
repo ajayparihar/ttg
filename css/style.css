@@ -1,6 +1,10 @@
 /* ============================================================
    CSS CUSTOM PROPERTIES & THEMES
    ============================================================ */
+@font-face {
+  font-family: 'Excalifont';
+  src: url('../fonts/Excalifont-Regular.woff2') format('woff2');
+}
 :root {
   --bg-primary: #0a0a0a;
   --fg-primary: #e5e5e5;
@@ -22,7 +26,7 @@
   --radius: 12px;
   --radius-sm: 8px;
   --transition: 0.2s ease;
-  --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font: 'Excalifont', 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 /* THEMES */
