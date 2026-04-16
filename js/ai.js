@@ -39,23 +39,30 @@ const AI = {
 
     if (!empty.length) return null;
 
+    const skill = Math.min(Math.max(Number.isFinite(LEVEL) ? LEVEL : 3, 1), 5);
+
+    if (skill === 1) {
+      const [r, c] = this._randomChoice(empty);
+      return { r, c };
+    }
+
     // --- Priority 1: Win immediately ---
     for (const [r, c] of empty) {
       grid[r][c] = aiPlayer;
       const wins  = size === 3  ? check3x3Win(grid) : null;
       const chain = size >= 4   ? this._bestChain(grid, r, c, aiPlayer) : 0;
       grid[r][c] = '';
-      if (wins || chain >= 3) return { r, c };
+      if (wins || chain >= size) return { r, c };
     }
 
     // --- Priority 2: Block opponent's immediate win / long chain ---
+    const blockThreshold = skill >= 4 ? 3 : 4;
     for (const [r, c] of empty) {
       grid[r][c] = opponentPlayer;
       const wins  = size === 3  ? check3x3Win(grid) : null;
       const chain = size >= 4   ? this._bestChain(grid, r, c, opponentPlayer) : 0;
       grid[r][c] = '';
-      // Block a direct win or any chain of 4+ on a large board
-      if (wins || chain >= 4) return { r, c };
+      if (wins || chain >= blockThreshold) return { r, c };
     }
 
     // --- Priority 3: Maximise own chain score ---
@@ -66,7 +73,19 @@ const AI = {
       grid[r][c] = '';
       if (score > bestScore) { bestScore = score; best = { r, c }; }
     }
-    if (best && bestScore > 0) return best;
+
+    if (best && bestScore > 0) {
+      if (skill === 2 && bestScore < 20) {
+        const [r, c] = this._randomChoice(empty);
+        return { r, c };
+      }
+      return best;
+    }
+
+    if (skill === 2) {
+      const [r, c] = this._randomChoice(empty);
+      return { r, c };
+    }
 
     // --- Priority 4: Block opponent from scoring ---
     let bestBlock = null, bestBlockScore = -1;
@@ -76,7 +95,9 @@ const AI = {
       grid[r][c] = '';
       if (score > bestBlockScore) { bestBlockScore = score; bestBlock = { r, c }; }
     }
-    if (bestBlock && bestBlockScore >= 10) return bestBlock;
+
+    const blockFloor = skill >= 4 ? 1 : 10;
+    if (bestBlock && bestBlockScore >= blockFloor) return bestBlock;
 
     // --- Priority 5: Positional preference — centre → corners → random ---
     const mid = Math.floor(size / 2);
@@ -87,12 +108,16 @@ const AI = {
     ].filter(([r, c]) => !grid[r][c]);
 
     if (corners.length) {
-      const [r, c] = corners[Math.floor(Math.random() * corners.length)];
+      const [r, c] = this._randomChoice(corners);
       return { r, c };
     }
 
-    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+    const [r, c] = this._randomChoice(empty);
     return { r, c };
+  },
+
+  _randomChoice(array) {
+    return array[Math.floor(Math.random() * array.length)];
   },
 
   /**

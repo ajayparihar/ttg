@@ -60,6 +60,12 @@ const State = {
    */
   scoredChains: new Set(),
 
+  /**
+   * All scored strike lines to persist visually.
+   * @type {Array<{chains: number[][][], player: 'X'|'O'}>}
+   */
+  scoredLines: [],
+
   /** Grid size at the start of the most recent round (used for expansion logic). */
   lastGridSize: 3,
 

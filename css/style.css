@@ -586,16 +586,11 @@ body {
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* Mark text */
-.cell .mark-text {
-  font-size: 48px;
-  font-weight: 700;
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Mark SVG */
+.cell .mark-svg {
   width: 100%;
   height: 100%;
+  position: absolute;
   animation: markAppear 0.3s ease-out;
 }
 
@@ -619,8 +614,11 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
-  font-size: 32px;
-  font-weight: 700;
+}
+
+.cell-ghost .mark-svg {
+  width: 80%;
+  height: 80%;
 }
 
 .cell:hover:not(.marked) .cell-ghost {

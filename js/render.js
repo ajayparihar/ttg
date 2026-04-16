@@ -78,6 +78,9 @@ const Render = {
 
     this.updateGridBorder();
     this.updateGridSizeBadge();
+
+    // Redraw all persistent strikes after rebuilding the grid
+    this.redrawAllStrikes();
   },
 
   /* ---- Single cell update ---- */
@@ -197,15 +200,37 @@ const Render = {
    * @param {'X'|'O'} player
    */
   drawWinStrike(cells, player) {
+    this.drawScoreStrikes([cells], player);
+  },
+
+  /**
+   * Draws one or more strike lines for newly scored chains.
+   * @param {Array<number[][]>} lines
+   * @param {'X'|'O'} player
+   */
+  drawScoreStrikes(lines, player) {
+    // Add new lines to the persistent list
+    State.scoredLines.push({ chains: lines, player });
+
+    // Redraw all strikes
+    this.redrawAllStrikes();
+  },
+
+  /**
+   * Redraws all persistent strike lines from State.scoredLines.
+   */
+  redrawAllStrikes() {
     const gridEl = document.getElementById('game-grid');
 
-    // Clear old strikes
+    // Clear old strikes and cell highlights
     gridEl.querySelectorAll('.win-strike-svg').forEach(s => s.remove());
+    document.querySelectorAll('.win-cell').forEach(cell => cell.classList.remove('win-cell'));
+
+    if (State.scoredLines.length === 0) return;
 
     const cs    = this.cellSize;
     const total = cs * State.gridSize;
 
-    // Build the SVG overlay
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', `0 0 ${total} ${total}`);
     svg.setAttribute('width',  total);
@@ -213,28 +238,38 @@ const Render = {
     svg.classList.add('win-strike-svg');
     svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
 
-    // Compute centre coordinates for the first and last cells in the win line
-    const [r0, c0] = cells[0];
-    const [r1, c1] = cells[cells.length - 1];
-    const x1 = c0 * cs + cs / 2;
-    const y1 = r0 * cs + cs / 2;
-    const x2 = c1 * cs + cs / 2;
-    const y2 = r1 * cs + cs / 2;
+    for (const { chains, player } of State.scoredLines) {
+      for (const cells of chains) {
+        if (!cells.length) continue;
 
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', x1);
-    line.setAttribute('y1', y1);
-    line.setAttribute('x2', x2);
-    line.setAttribute('y2', y2);
-    line.setAttribute('stroke', player === 'X' ? 'var(--color-x)' : 'var(--color-o)');
-    line.classList.add('win-strike-line');
+        const [r0, c0] = cells[0];
+        const [r1, c1] = cells[cells.length - 1];
+        const x1 = c0 * cs + cs / 2;
+        const y1 = r0 * cs + cs / 2;
+        const x2 = c1 * cs + cs / 2;
+        const y2 = r1 * cs + cs / 2;
 
-    svg.appendChild(line);
+        // Create a slightly curved path for hand-drawn look
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const offset = 5; // pixels
+        const cx = (x1 + x2) / 2 - (dy / length) * offset;
+        const cy = (y1 + y2) / 2 + (dx / length) * offset;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+        path.setAttribute('stroke', player === 'X' ? 'var(--color-x)' : 'var(--color-o)');
+        path.setAttribute('fill', 'none');
+        path.classList.add('win-strike-line');
+        svg.appendChild(path);
+
+        cells.forEach(([r, c]) => this.getCell(r, c)?.classList.add('win-cell'));
+      }
+    }
+
     gridEl.style.position = 'relative';
     gridEl.appendChild(svg);
-
-    // Highlight the winning cells
-    cells.forEach(([r, c]) => this.getCell(r, c)?.classList.add('win-cell'));
   },
 
   /* ---- Expansion animation ---- */

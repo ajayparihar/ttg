@@ -8,19 +8,24 @@
    ============================================================ */
 
 /**
- * Builds the X mark as plain text.
+ * Builds the X mark as hand-drawn SVG.
  * @returns {string} HTML string.
  */
 function makeXSvg() {
-  return `<span class="mark-text x-mark">X</span>`;
+  return `<svg class="mark-svg x-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <line x1="15" y1="15" x2="85" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+    <line x1="85" y1="15" x2="15" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  </svg>`;
 }
 
 /**
- * Builds the O mark as plain text.
+ * Builds the O mark as hand-drawn SVG.
  * @returns {string} HTML string.
  */
 function makeOSvg() {
-  return `<span class="mark-text o-mark">O</span>`;
+  return `<svg class="mark-svg o-mark" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="50" cy="50" rx="35" ry="40" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  </svg>`;
 }
 
 /**
@@ -28,7 +33,10 @@ function makeOSvg() {
  * @returns {string} HTML string.
  */
 function makeGhostX() {
-  return `<span class="mark-text x-mark ghost">X</span>`;
+  return `<svg class="mark-svg x-mark ghost" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <line x1="15" y1="15" x2="85" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+    <line x1="85" y1="15" x2="15" y2="85" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  </svg>`;
 }
 
 /**
@@ -36,5 +44,7 @@ function makeGhostX() {
  * @returns {string} HTML string.
  */
 function makeGhostO() {
-  return `<span class="mark-text o-mark ghost">O</span>`;
+  return `<svg class="mark-svg o-mark ghost" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="50" cy="50" rx="35" ry="40" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  </svg>`;
 }

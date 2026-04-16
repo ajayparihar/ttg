@@ -16,6 +16,9 @@ const MAX_CHAIN_SCORE = 50;
 /** Milliseconds the AI "thinks" before playing — keeps UX from feeling instant. */
 const AI_DELAY_MS = 420;
 
+/** AI difficulty level: 1 = easiest, 5 = toughest. */
+const LEVEL = 5;
+
 /** Minimum rendered pixel size for a grid cell (ensures tap targets are usable). */
 const MIN_CELL_PX = 44;
 

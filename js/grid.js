@@ -119,6 +119,40 @@ function chainId(r, c, dr, dc, len) {
   return `${r},${c},${ndr},${ndc},${len}`;
 }
 
+/**
+ * Returns the ordered cell coordinates for a chain through (r, c) in the
+ * given direction.
+ * @param {string[][]} grid
+ * @param {number} r
+ * @param {number} c
+ * @param {number} dr
+ * @param {number} dc
+ * @param {string} player
+ * @returns {number[][]}
+ */
+function getChainCells(grid, r, c, dr, dc, player) {
+  const cells = [[r, c]];
+  const size = grid.length;
+
+  let nr = r + dr;
+  let nc = c + dc;
+  while (nr >= 0 && nr < size && nc >= 0 && nc < size && grid[nr][nc] === player) {
+    cells.push([nr, nc]);
+    nr += dr;
+    nc += dc;
+  }
+
+  nr = r - dr;
+  nc = c - dc;
+  while (nr >= 0 && nr < size && nc >= 0 && nc < size && grid[nr][nc] === player) {
+    cells.unshift([nr, nc]);
+    nr -= dr;
+    nc -= dc;
+  }
+
+  return cells;
+}
+
 /* ---- Win detection ---- */
 
 /**
@@ -165,13 +199,14 @@ function check3x3Win(grid) {
  * @param {number} c
  * @param {string} player - 'X' or 'O'.
  * @param {Set<string>} scoredChains - Already-rewarded chain IDs.
- * @returns {number} Points to add to the player's score.
+ * @returns {{ points: number, chains: number[][][] }} Points and newly scored chains.
  */
 function scoreMoveOnGrid(grid, r, c, player, scoredChains) {
   // The four directions to check (pairs cover all eight because getChainLength
   // walks both ways from the origin cell)
   const DIRECTIONS = [[0,1], [1,0], [1,1], [1,-1]];
   let totalPts = 0;
+  const scoredLines = [];
 
   for (const [dr, dc] of DIRECTIONS) {
     const len = getChainLength(grid, r, c, dr, dc, player);
@@ -197,8 +232,9 @@ function scoreMoveOnGrid(grid, r, c, player, scoredChains) {
     if (newPts > 0) {
       totalPts += newPts;
       scoredChains.add(id);
+      scoredLines.push(getChainCells(grid, r, c, dr, dc, player));
     }
   }
 
-  return totalPts;
+  return { points: totalPts, chains: scoredLines };
 }

@@ -52,6 +52,7 @@ function makeMove(r, c, isAI = false) {
       scores:        { ...State.scores },
       currentPlayer: State.currentPlayer,
       scoredChains:  new Set(State.scoredChains),
+      scoredLines:   [...State.scoredLines],
       gridSize:      State.gridSize,
     };
   }
@@ -86,6 +87,28 @@ function _processMoveOn3x3() {
 }
 
 /**
+ * Returns the cells for a full-board line of the current grid size.
+ * If no winning line exists, returns null.
+ * @param {number} r
+ * @param {number} c
+ * @param {'X'|'O'} player
+ * @returns {number[][]|null}
+ */
+function _findFullChainWin(r, c, player) {
+  const needed = State.gridSize;
+  const directions = [[0,1], [1,0], [1,1], [1,-1]];
+
+  for (const [dr, dc] of directions) {
+    const len = getChainLength(State.grid, r, c, dr, dc, player);
+    if (len >= needed) {
+      return getChainCells(State.grid, r, c, dr, dc, player);
+    }
+  }
+
+  return null;
+}
+
+/**
  * Post-move processing for 4×4+ boards.
  * Scores any new chains, then expands if the board is full.
  *
@@ -94,21 +117,36 @@ function _processMoveOn3x3() {
  * @param {'X'|'O'} player
  */
 function _processMoveOnLargeGrid(r, c, player) {
-  const pts = scoreMoveOnGrid(State.grid, r, c, player, State.scoredChains);
+  const winningLine = _findFullChainWin(r, c, player);
+  if (winningLine) {
+    Render.drawWinStrike(winningLine, player);
+    setTimeout(() => endGame(player, 'classic'), 600);
+    return;
+  }
 
-  if (pts > 0) {
-    State.scores[player] += pts;
+  const result = scoreMoveOnGrid(State.grid, r, c, player, State.scoredChains);
+
+  if (result.points > 0) {
+    State.scores[player] += result.points;
     Render.updateScore(player);
+    Render.drawScoreStrikes(result.chains, player);
 
     // Toast for notable scores
-    if (pts >= 30) App.showToast(`${State.names[player]} +${pts} pts!`);
-    else if (pts >= 20) App.showToast(`${State.names[player]} +${pts} pts!`);
+    if (result.points >= 30) App.showToast(`${State.names[player]} +${result.points} pts!`);
+    else if (result.points >= 20) App.showToast(`${State.names[player]} +${result.points} pts!`);
   }
 
   if (isGridFull(State.grid)) {
-    expandGrid();
+    if (State.scores.X === State.scores.O) {
+      expandGrid();
+      return;
+    }
+
+    const winner = State.scores.X > State.scores.O ? 'X' : 'O';
+    setTimeout(() => endGame(winner, 'classic'), 300);
     return;
   }
+
   switchTurn();
 }
 
