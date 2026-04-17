@@ -199,6 +199,16 @@
       <button class="btn btn-primary btn-rematch" onclick="App.rematch()">
         <i class="fa-solid fa-redo"></i> Rematch
       </button>
+      
+      <div class="gameover-extra-actions" data-html2canvas-ignore>
+        <button class="btn btn-secondary" onclick="App.downloadScreenshot()" title="Download Screenshot">
+          <i class="fa-solid fa-download"></i>
+        </button>
+        <button class="btn btn-secondary" onclick="App.shareResult()" title="Share Result">
+          <i class="fa-solid fa-share-nodes"></i>
+        </button>
+      </div>
+
       <button class="btn btn-menu" onclick="App.goHome()">
         Menu
       </button>
@@ -327,6 +337,9 @@
      (classic scripts share the global scope, preserving
       onclick="App.xxx()" inline handlers without a build step)
      ============================================================ -->
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <script src="js/constants.js"></script>
 <script src="js/state.js"></script>
 <script src="js/svg.js"></script>

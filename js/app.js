@@ -359,6 +359,113 @@ const App = {
     setTimeout(() => toast.remove(), dur);
   },
 
+  /* ---- Screenshot & Sharing ---- */
+
+  /**
+   * Captures a screenshot of the gameover card and triggers a download.
+   * High-quality capture that preserves the hand-drawn aesthetic, shadows, and theme colors.
+   */
+  async downloadScreenshot() {
+    await document.fonts.ready;
+    const card = document.querySelector('.gameover-card');
+    if (!card) return;
+
+    try {
+      const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() || '#0a0a0a';
+      
+      const canvas = await html2canvas(card, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: bgColor,
+        logging: false,
+        onclone: (clonedDoc) => {
+          const clonedCard = clonedDoc.querySelector('.gameover-card');
+          if (clonedCard) {
+            // Force fonts and styles for high fidelity
+            clonedCard.style.transform = 'none';
+            clonedCard.style.animation = 'none';
+            clonedCard.style.boxShadow = 'none'; // Card shadow can be tricky in html2canvas if clipped
+            clonedCard.style.margin = '0';
+            
+            // Ensure icons and text are sharp
+            clonedCard.querySelectorAll('*').forEach(el => {
+              el.style.textRendering = 'optimizeLegibility';
+              el.style.webkitFontSmoothing = 'antialiased';
+            });
+
+            // Ensure winner glow is captured (box-shadow)
+            const winnerInitial = clonedCard.querySelector('.winner-initial');
+            if (winnerInitial) {
+              winnerInitial.style.filter = 'none'; // Re-verify glows
+            }
+          }
+        }
+      });
+
+      const dataUrl = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.download = `TicTacGrow-Result-${State.names.X}-vs-${State.names.O}.png`;
+      link.href = dataUrl;
+      link.click();
+
+      this.showToast('Result saved!');
+    } catch (err) {
+      console.error('Screenshot capture failed:', err);
+      this.showToast('Failed to generate screenshot.');
+    }
+  },
+
+  /**
+   * Captures the result and opens the native share sheet.
+   */
+  async shareResult() {
+    await document.fonts.ready;
+    const card = document.querySelector('.gameover-card');
+    if (!card) return;
+
+    try {
+      const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() || '#0a0a0a';
+
+      const canvas = await html2canvas(card, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: bgColor,
+      });
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          this.showToast('Could not generate share image.');
+          return;
+        }
+
+        const file = new File([blob], 'TicTacGrow-Result.png', { type: 'image/png' });
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: 'Tic Tac Grow',
+              text: `I just dominanted in Tic Tac Grow! Check out the score:`,
+              files: [file]
+            });
+          } catch (sErr) {
+            if (sErr.name !== 'AbortError') {
+              console.error('Share failed:', sErr);
+              this.showToast('Share failed.');
+            }
+          }
+        } else {
+          this.downloadScreenshot();
+        }
+      }, 'image/png', 1.0);
+
+    } catch (err) {
+      console.error('Share capture failed:', err);
+      this.showToast('Share failed.');
+    }
+  },
+
   /* ---- Persistence ---- */
 
   /**

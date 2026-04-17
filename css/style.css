@@ -936,6 +936,24 @@ body {
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
+.gameover-extra-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn-secondary {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid var(--card-border) !important;
+  color: var(--fg-primary) !important;
+}
+
+.btn-secondary:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: var(--fg-secondary) !important;
+}
+
 .btn-menu {
   background: rgba(255,255,255,0.03) !important;
   border: 1px solid var(--card-border) !important;
