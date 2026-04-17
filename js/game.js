@@ -233,23 +233,38 @@ function endGame(winner, reason) {
  * @param {string} reason
  */
 function _renderGameOverScreen(winner, reason) {
-  const goEmoji  = document.getElementById('go-emoji');
-  const goTitle  = document.getElementById('go-title');
-  const goScores = document.getElementById('go-scores');
-  const goMeta   = document.getElementById('go-meta');
+  const goEmoji    = document.getElementById('go-emoji');
+  const goTitle    = document.getElementById('go-title');
+  const goSubtitle = document.getElementById('go-subtitle');
+  const goScores   = document.getElementById('go-scores');
+  const goMeta     = document.getElementById('go-meta');
 
   const isDraw = (winner === 'draw' || (!winner && State.scores.X === State.scores.O));
 
   if (isDraw) {
-    goEmoji.innerHTML = '<div class="draw-icon"></div>';
-    goTitle.textContent = "It's a Draw!";
+    goEmoji.innerHTML = '🤝'; // Simple hand-shake for draw
+    goEmoji.className = 'gameover-emoji';
+    goEmoji.style.color = 'var(--fg-secondary)';
+    
+    goTitle.textContent = "DRAW";
     goTitle.className   = 'gameover-title draw';
+    goSubtitle.textContent = "A well-fought battle.";
   } else {
     // Determine winner by score if not explicitly passed
     const w = winner || (State.scores.X > State.scores.O ? 'X' : 'O');
+    const winnerName = State.names[w];
+    
     goEmoji.innerHTML = `<div class="winner-initial ${w.toLowerCase()}-color">${w}</div>`;
-    goTitle.textContent = `${State.names[w]} Wins!`;
+    goEmoji.className = 'gameover-emoji';
+    
+    // Choose an emotional title
+    const titles = ["VICTORY!", "DOMINATION!", "YOU WIN!", "CHAMPION!"];
+    const quotes = ["dominated the field.", "showed no mercy.", "takes the crown.", "is unstoppable."];
+    
+    goTitle.textContent = titles[Math.floor(Math.random() * titles.length)];
     goTitle.className   = `gameover-title win-${w.toLowerCase()}`;
+    goSubtitle.textContent = `${winnerName} ${quotes[Math.floor(Math.random() * quotes.length)]}`;
+    
     launchConfetti(w);
   }
 
@@ -257,14 +272,15 @@ function _renderGameOverScreen(winner, reason) {
   const isXWinner = State.scores.X > State.scores.O;
   const isOWinner = State.scores.O > State.scores.X;
 
+  // Use a cleaner score display
   goScores.innerHTML = `
-    <div class="gameover-score-row x-row ${isXWinner && reason !== 'classic' ? 'winner-row' : ''}">
+    <div class="gameover-score-row x-row ${isXWinner ? 'winner-row' : ''}">
       <span>${State.names.X}</span>
-      <span>${reason === 'classic' && winner === 'X' ? 'Winner' : State.scores.X + 'pts'}</span>
+      <span>${State.scores.X} pts</span>
     </div>
-    <div class="gameover-score-row o-row ${isOWinner && reason !== 'classic' ? 'winner-row' : ''}">
+    <div class="gameover-score-row o-row ${isOWinner ? 'winner-row' : ''}">
       <span>${State.names.O}</span>
-      <span>${reason === 'classic' && winner === 'O' ? 'Winner' : State.scores.O + ' pts'}</span>
+      <span>${State.scores.O} pts</span>
     </div>
   `;
 

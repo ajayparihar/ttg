@@ -185,18 +185,26 @@
      ============================================================ -->
 <div id="gameover-screen" class="screen">
   <div class="gameover-card">
-    <div class="gameover-emoji" id="go-emoji"></div>
-    <div class="gameover-title" id="go-title">Xi Wins!</div>
+    <div class="gameover-hero">
+      <div class="gameover-emoji" id="go-emoji"></div>
+      <div class="gameover-title" id="go-title">VICTORY!</div>
+      <div class="gameover-subtitle" id="go-subtitle">Xi dominates</div>
+    </div>
 
-    <!-- Score rows are injected by endGame() -->
     <div class="gameover-scores" id="go-scores"></div>
 
-    <div class="gameover-meta" id="go-meta">3×3 grid · 3 minutes</div>
+    <div class="gameover-divider"></div>
 
-    <div class="gameover-buttons">
-      <button class="btn btn-x" onclick="App.rematch()"><i class="fa-solid fa-redo"></i> Rematch</button>
-      <button class="btn"       onclick="App.goHome()"><i class="fa-solid fa-home"></i> Menu</button>
+    <div class="gameover-actions">
+      <button class="btn btn-primary btn-rematch" onclick="App.rematch()">
+        <i class="fa-solid fa-redo"></i> Rematch
+      </button>
+      <button class="btn btn-menu" onclick="App.goHome()">
+        Menu
+      </button>
     </div>
+
+    <div class="gameover-meta" id="go-meta">3×3 grid · 3 minutes</div>
   </div>
 </div>
 
