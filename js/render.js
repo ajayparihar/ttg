@@ -30,12 +30,21 @@ const Render = {
     const maxW   = wrapperEl.clientWidth  - 32;
     const maxH   = wrapperEl.clientHeight - 80;
     const maxDim = Math.min(maxW, maxH, 640);
-    this.cellSize = Math.max(MIN_CELL_PX, Math.floor(maxDim / gridSize));
+    
+    // New Grid Padding and Gap
+    const gap = 6;
+    const padding = 6;
+    const availableForCells = maxDim - (gap * (gridSize - 1)) - (padding * 2);
+    
+    this.cellSize = Math.max(MIN_CELL_PX, Math.floor(availableForCells / gridSize));
 
     // Apply grid layout
+    const totalSize = (this.cellSize * gridSize) + (gap * (gridSize - 1)) + (padding * 2);
+    gridEl.style.gap                 = `${gap}px`;
+    gridEl.style.padding             = `${padding}px`;
     gridEl.style.gridTemplateColumns = `repeat(${gridSize}, ${this.cellSize}px)`;
-    gridEl.style.width               = `${this.cellSize * gridSize}px`;
-    gridEl.style.height              = `${this.cellSize * gridSize}px`;
+    gridEl.style.width               = `${totalSize}px`;
+    gridEl.style.height              = `${totalSize}px`;
 
     // Rebuild all cells from scratch
     gridEl.innerHTML = '';
@@ -95,8 +104,15 @@ const Render = {
     const cell = this.getCell(r, c);
     if (!cell) return;
 
+    const ghostSvg = cell.querySelector('.cell-ghost svg');
+    if (ghostSvg && ghostSvg.classList.contains(`${player.toLowerCase()}-mark`)) {
+      ghostSvg.classList.remove('ghost');
+      cell.innerHTML = ghostSvg.outerHTML;
+    } else {
+      cell.innerHTML = player === 'X' ? makeXSvg() : makeOSvg();
+    }
+
     cell.classList.add(`${player.toLowerCase()}-marked`, 'marked');
-    cell.innerHTML = player === 'X' ? makeXSvg() : makeOSvg();
 
     // Detach click listener — this cell is now occupied
     cell.removeEventListener('click', handleCellClick);
@@ -209,8 +225,21 @@ const Render = {
    * @param {'X'|'O'} player
    */
   drawScoreStrikes(lines, player) {
+    // Generate random path data for each chain once when it's drawn
+    const chainsWithParams = lines.map(cells => ({
+      cells,
+      extendStart: Math.random() * STRIKE_OVERSHOOT_JITTER + STRIKE_OVERSHOOT_MIN,
+      extendEnd: Math.random() * STRIKE_OVERSHOOT_JITTER + STRIKE_OVERSHOOT_MIN,
+      xAOffset: Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER,
+      yAOffset: Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER,
+      xBOffset: Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER,
+      yBOffset: Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER,
+      curveJitter: Math.random() * (STRIKE_CURVE_JITTER * 2) - STRIKE_CURVE_JITTER,
+      curveSign: Math.random() < 0.5 ? 1 : -1
+    }));
+
     // Add new lines to the persistent list
-    State.scoredLines.push({ chains: lines, player });
+    State.scoredLines.push({ chains: chainsWithParams, player });
 
     // Redraw all strikes
     this.redrawAllStrikes();
@@ -229,7 +258,9 @@ const Render = {
     if (State.scoredLines.length === 0) return;
 
     const cs    = this.cellSize;
-    const total = cs * State.gridSize;
+    const gap   = 6;
+    const padding = 6;
+    const total = (cs * State.gridSize) + (gap * (State.gridSize - 1)) + (padding * 2);
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', `0 0 ${total} ${total}`);
@@ -239,28 +270,55 @@ const Render = {
     svg.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
 
     for (const { chains, player } of State.scoredLines) {
-      for (const cells of chains) {
-        if (!cells.length) continue;
+      for (const chain of chains) {
+        // Support backward compatibility if the chain is a legacy unparametrised array
+        const isLegacy = Array.isArray(chain);
+        const cells = isLegacy ? chain : chain.cells;
+
+        if (!cells || !cells.length) continue;
 
         const [r0, c0] = cells[0];
         const [r1, c1] = cells[cells.length - 1];
-        const x1 = c0 * cs + cs / 2;
-        const y1 = r0 * cs + cs / 2;
-        const x2 = c1 * cs + cs / 2;
-        const y2 = r1 * cs + cs / 2;
+        const x1 = padding + c0 * (cs + gap) + cs / 2;
+        const y1 = padding + r0 * (cs + gap) + cs / 2;
+        const x2 = padding + c1 * (cs + gap) + cs / 2;
+        const y2 = padding + r1 * (cs + gap) + cs / 2;
 
-        // Create a slightly curved path for hand-drawn look
-        const dx = x2 - x1;
-        const dy = y2 - y1;
+        // Over-shoot and jitter ends for a fast, hand-drawn look
+        const dxOrig = x2 - x1;
+        const dyOrig = y2 - y1;
+        const lenOrig = Math.sqrt(dxOrig * dxOrig + dyOrig * dyOrig);
+        const nx = lenOrig > 0 ? dxOrig / lenOrig : 0;
+        const ny = lenOrig > 0 ? dyOrig / lenOrig : 0;
+
+        const extendStart = isLegacy ? (Math.random() * STRIKE_OVERSHOOT_JITTER + STRIKE_OVERSHOOT_MIN) : chain.extendStart;
+        const extendEnd   = isLegacy ? (Math.random() * STRIKE_OVERSHOOT_JITTER + STRIKE_OVERSHOOT_MIN) : chain.extendEnd;
+
+        const xAOff = isLegacy ? (Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER) : chain.xAOffset;
+        const yAOff = isLegacy ? (Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER) : chain.yAOffset;
+        const xBOff = isLegacy ? (Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER) : chain.xBOffset;
+        const yBOff = isLegacy ? (Math.random() * (STRIKE_POS_JITTER * 2) - STRIKE_POS_JITTER) : chain.yBOffset;
+
+        const xA = x1 - nx * extendStart + xAOff;
+        const yA = y1 - ny * extendStart + yAOff;
+        const xB = x2 + nx * extendEnd   + xBOff;
+        const yB = y2 + ny * extendEnd   + yBOff;
+
+        // Create a slightly curved path
+        const dx = xB - xA;
+        const dy = yB - yA;
         const length = Math.sqrt(dx * dx + dy * dy);
-        const baseOffset = Math.min(14, length * 0.08);
-        const jitter = Math.random() * 6 - 3;
-        const offset = baseOffset + jitter;
-        const cx = (x1 + x2) / 2 - (dy / length) * offset;
-        const cy = (y1 + y2) / 2 + (dx / length) * offset;
+        const baseOffset = Math.min(STRIKE_CURVE_BASE, length * 0.08);
+        const curveJitter = isLegacy ? (Math.random() * (STRIKE_CURVE_JITTER * 2) - STRIKE_CURVE_JITTER) : chain.curveJitter;
+        const curveSign = isLegacy ? (Math.random() < 0.5 ? 1 : -1) : chain.curveSign;
+        const offsetMag = baseOffset + curveJitter;
+        const offset = offsetMag * curveSign;
+        
+        const cx = (xA + xB) / 2 - (dy / length) * offset;
+        const cy = (yA + yB) / 2 + (dx / length) * offset;
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+        path.setAttribute('d', `M ${xA} ${yA} Q ${cx} ${cy} ${xB} ${yB}`);
         path.setAttribute('stroke', 'currentColor');
         path.setAttribute('fill', 'none');
         path.classList.add('win-strike-line', player === 'X' ? 'x-strike' : 'o-strike');

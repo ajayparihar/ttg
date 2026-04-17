@@ -13,11 +13,13 @@
  * @returns {string}
  */
 function randomMarkTransform() {
-  const rotate = (Math.random() * 20 - 10).toFixed(1); // -10° to 10°
-  const scale = 0.96 + Math.random() * 0.08;             // 0.96 to 1.04
-  const flipX = Math.random() < 0.12 ? -1 : 1;
-  const flipY = Math.random() < 0.12 ? -1 : 1;
-  return `translate(50 50) rotate(${rotate}) scale(${flipX * scale} ${flipY * scale}) translate(-50 -50)`;
+  const rotate = (Math.random() * (MARK_ROT_JITTER * 2) - MARK_ROT_JITTER).toFixed(1);
+  const scale = MARK_SCALE_BASE + Math.random() * MARK_SCALE_JITTER;
+  const flipX = Math.random() < 0.15 ? -1 : 1;
+  const flipY = Math.random() < 0.15 ? -1 : 1;
+  const dx = (Math.random() * (MARK_POS_JITTER * 2) - MARK_POS_JITTER).toFixed(1);
+  const dy = (Math.random() * (MARK_POS_JITTER * 2) - MARK_POS_JITTER).toFixed(1);
+  return `translate(${50 + parseFloat(dx)} ${50 + parseFloat(dy)}) rotate(${rotate}) scale(${flipX * scale} ${flipY * scale}) translate(-50 -50)`;
 }
 
 /**

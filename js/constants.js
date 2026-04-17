@@ -40,3 +40,37 @@ function chainScore(len) {
   if (len < 3) return 0;
   return Math.min((len - 2) * 10, MAX_CHAIN_SCORE);
 }
+
+/* ============================================================
+   VISUAL TWEAKS
+   Adjust these to change the hand-drawn feel of the game.
+   (Note: Strike line thickness is controlled by --strike-width in style.css)
+   ============================================================ */
+
+/** Maximum degrees of rotation for X and O marks (+ and -) */
+const MARK_ROT_JITTER = 13;
+
+/** Base scaling factor for X and O marks */
+const MARK_SCALE_BASE = 0.92;
+
+/** Maximum additional random scaling for X and O marks */
+const MARK_SCALE_JITTER = 0.14;
+
+/** Maximum X/Y pixel translation for X and O marks (+ and -) */
+const MARK_POS_JITTER = 4;
+
+/** Minimum pixel overshoot extending past the grid for win strike lines */
+const STRIKE_OVERSHOOT_MIN = 6;
+
+/** Maximum extra random pixel overshoot for win strike lines */
+const STRIKE_OVERSHOOT_JITTER = 14;
+
+/** Maximum start/end pixel origin jitter for win strike lines (+ and -) */
+const STRIKE_POS_JITTER = 4;
+
+/** Maximum base curvature offset for win strike lines */
+const STRIKE_CURVE_BASE = 18;
+
+/** Maximum curvature pixel jitter for win strike lines */
+const STRIKE_CURVE_JITTER = 5;
+
