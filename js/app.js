@@ -37,9 +37,21 @@ const App = {
    */
   goToMode(mode) {
     this.selectedMode = mode;
-    const label = mode === 'single' ? 'Single Player' : 'Dual Player';
-    document.getElementById('mode-screen-title').textContent = `${label} — Duration`;
-    this.showScreen('mode');
+    
+    if (MODE) {
+      const label = mode === 'single' ? 'Single Player' : 'Dual Player';
+      document.getElementById('mode-screen-title').textContent = `${label} — Duration`;
+      this.showScreen('mode');
+    } else {
+      // If MODE is false, skip duration selection and default to unlimited (0)
+      this.selectedDuration = 0;
+      
+      // Hide the O name field in single-player mode
+      document.getElementById('name-o-group').style.display =
+        this.selectedMode === 'single' ? 'none' : '';
+        
+      this.showScreen('name');
+    }
   },
 
   /**
@@ -56,6 +68,7 @@ const App = {
     });
 
     // Short delay lets the selection highlight show before the transition
+    // This only happens when the user manually selects a duration
     setTimeout(() => this.showScreen('name'), 150);
 
     // Hide the O name field in single-player mode

@@ -31,12 +31,12 @@
       <i class="fa-solid fa-user"></i> Single Player
     </button>
     <button class="btn btn-primary" onclick="App.goToMode('dual')">
-      <i class="fa-solid fa-user-group"></i>Dual Player</button>
+      <i class="fa-solid fa-user-group"></i> Dual Player</button>
   </div>
 
   <div style="display:flex;gap:10px;">
-    <button class="btn btn-sm" onclick="App.openSettings()"><i class="fa-solid fa-palette"></i></button>
-    <button class="btn btn-sm" onclick="App.showHowToPlay()"><i class="fa-solid fa-question-circle"></i></button>
+    <button class="btn btn-icon" onclick="App.openSettings()"><i class="fa-solid fa-palette"></i></button>
+    <button class="btn btn-icon" onclick="App.showHowToPlay()"><i class="fa-solid fa-question-circle"></i></button>
   </div>
 </div>
 
@@ -78,13 +78,13 @@
      ============================================================ -->
 <div id="name-screen" class="screen">
   <div class="screen-header">
-    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('mode')">←</button>
+    <button class="btn btn-icon screen-back-btn" onclick="App.goBack(MODE ? 'mode' : 'menu')">←</button>
     <h2 class="screen-title">Player Names</h2>
   </div>
 
   <div class="name-input-container">
     <div class="player-input-group">
-      <label class="player-input-label x-label">Player X (Red)</label>
+      <label class="player-input-label x-label">✕ Player X (Red)</label>
       <input type="text" id="name-x" class="player-name-input x-input"
              placeholder="Xi" maxlength="12" autocomplete="off" spellcheck="false">
     </div>

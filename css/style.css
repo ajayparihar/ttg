@@ -241,8 +241,13 @@ body {
 .btn i {
   font-size: 20px;
   line-height: 1;
+}
+
+.btn i:not(:last-child) {
   margin-right: 8px;
 }
+
+
 
 .btn-primary {
   background: linear-gradient(135deg, var(--color-x), var(--color-o));
@@ -267,12 +272,18 @@ body {
 }
 
 .btn-icon {
-  padding: 10px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  flex-shrink: 0;
   border-radius: var(--radius-sm);
-  min-width: 40px;
-  height: 40px;
-  font-size: 18px;
 }
+
+.btn-icon i {
+  margin: 0 !important;
+  font-size: 20px;
+}
+
 
 .btn-sm {
   padding: 8px 16px;
