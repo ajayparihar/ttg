@@ -17,7 +17,7 @@ const MAX_CHAIN_SCORE = 50;
 const AI_DELAY_MS = 500;
 
 /** AI difficulty level: 1 = easiest, 5 = toughest. */
-const LEVEL = 1;
+const LEVEL = 5;
 
 /** When true, all durations are available. When false, only unlimited is available and selection is skipped. */
 const MODE = false;
