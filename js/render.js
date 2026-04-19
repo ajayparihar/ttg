@@ -152,10 +152,15 @@ export const Render = {
     
     // Grid is "waiting" if we are processing a move OR if it's the AI's turn
     const isAiTurn = State.mode === 'single' && State.currentPlayer === 'O';
-    const isWaiting = isAiTurn || State.isProcessing;
+    // In multiplayer, it's waiting if it's NOT our role
+    const isMultiwaiting = State.isMultiplayer && State.currentPlayer !== State.playerRole;
+    const isWaiting = isAiTurn || isMultiwaiting || State.isProcessing;
 
     gridEl.className  = `game-grid ${cls} ${isWaiting ? 'waiting' : ''}`;
-    turnInd.className = `turn-indicator ${cls}`;
+    
+    // Preserve hidden class if it exists
+    const isHidden = turnInd.classList.contains('hidden');
+    turnInd.className = `turn-indicator ${cls} ${isHidden ? 'hidden' : ''}`;
   },
 
   /**
@@ -164,7 +169,19 @@ export const Render = {
    */
   updateTurnIndicator() {
     const ti = document.getElementById('turn-indicator');
-    ti.textContent = `${State.names[State.currentPlayer]}'s Turn`;
+    
+    let name = State.names[State.currentPlayer];
+    if (State.isMultiplayer) {
+      const isOurTurn = State.currentPlayer === State.playerRole;
+      if (isOurTurn) State.isProcessing = false; // Fail-safe unlock
+      
+      ti.classList.remove('hidden'); // Show the pill again!
+      ti.textContent = isOurTurn ? "Your Turn" : "Opponent's Turn";
+    } else {
+      ti.classList.remove('hidden');
+      ti.textContent = `${name}'s Turn`;
+    }
+
     this.updateGridBorder();
 
     // Refresh ghost previews for the new current player
@@ -175,14 +192,47 @@ export const Render = {
   },
 
   /**
+   * Syncs existing cell contents with State.grid without rebuilding the DOM.
+   * Useful for smooth multiplayer updates.
+   * @param {Cell[][]} grid
+   */
+  syncGrid(grid) {
+    for (let r = 0; r < State.gridSize; r++) {
+      for (let c = 0; c < State.gridSize; c++) {
+        const val = grid[r][c];
+        const cell = this.getCell(r, c);
+        if (!cell) continue;
+
+        if (val && !cell.classList.contains('marked')) {
+          this.updateCell(r, c, val);
+        } else if (!val && cell.classList.contains('marked')) {
+          // Cell cleared (unlikely in this game, but for completeness)
+          cell.classList.remove('x-marked', 'o-marked', 'marked');
+          cell.innerHTML = "";
+          const ghost = document.createElement('div');
+          ghost.className = 'cell-ghost';
+          ghost.innerHTML = this.getGhostHtml();
+          cell.appendChild(ghost);
+          if (onCellClick) cell.addEventListener('click', onCellClick);
+        }
+      }
+    }
+    this.redrawAllStrikes();
+  },
+
+  /**
    * Helper to determine what (if any) ghost mark to show.
    * In single-player mode, we hide the ghost during the AI's turn.
    */
   getGhostHtml() {
     // Hide ghost during move processing or AI turn
     if (State.isProcessing) return '';
+    
     if (State.mode === 'single' && State.currentPlayer === 'O') return '';
     
+    // In multiplayer, hide ghost if it's not our turn
+    if (State.isMultiplayer && State.currentPlayer !== State.playerRole) return '';
+
     // Hide ghost if game is no longer active
     if (!State.gameActive) return '';
     
@@ -197,8 +247,16 @@ export const Render = {
     const key   = player.toLowerCase();
     const val   = document.getElementById(`score-${key}-val`);
     const block = document.getElementById(`score-${key}-block`);
+    const nameEl = document.getElementById(`score-${key}-name`);
 
     val.textContent = State.scores[player];
+    
+    // Add (You) indicator in multiplayer
+    if (State.isMultiplayer && player === State.playerRole) {
+      nameEl.textContent = `${State.names[player]} (You)`;
+    } else {
+      nameEl.textContent = State.names[player];
+    }
 
     // Restart the flash animation by forcing a reflow
     block.classList.remove('score-flash');

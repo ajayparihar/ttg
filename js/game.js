@@ -13,6 +13,7 @@ import {
 import { launchConfetti } from './confetti.js';
 import { App } from './app.js';
 import { makeCrownSvg } from './svg.js';
+import { Multiplayer } from './multiplayer.js';
 
 /* ---- Input handling ---- */
 
@@ -34,6 +35,9 @@ export function handleCellClick(e) {
 
   // Ignore human clicks during AI's turn
   if (State.mode === 'single' && State.currentPlayer === 'O') return;
+
+  // Ignore human clicks if it's not our turn in multiplayer
+  if (State.isMultiplayer && State.currentPlayer !== State.playerRole) return;
 
   State.isProcessing = true;
   Render.updateTurnIndicator(); // Hide ghosts immediately
@@ -173,6 +177,11 @@ export function switchTurn() {
   State.isProcessing = false; // Turn is now open for input
   Render.updateTurnIndicator();
 
+  // Sync turn switch to Firebase
+  if (State.isMultiplayer) {
+    Multiplayer.pushState();
+  }
+
   if (State.mode === 'single' && State.currentPlayer === 'O' && State.gameActive) {
     triggerAI();
   }
@@ -237,11 +246,16 @@ export function expandGrid() {
 export function endGame(winner, reason) {
   State.gameActive = false;
   State.isProcessing = false;
+  State.winner = winner;
   clearTimers();
 
   _renderGameOverScreen(winner, reason);
   App.showScreen('gameover');
   _persistStats();
+  
+  if (State.isMultiplayer) {
+    Multiplayer.pushState();
+  }
 }
 
 /**
@@ -280,16 +294,27 @@ function _renderGameOverScreen(winner, reason) {
     
     // Choose an emotional title based on the outcome
     let titles = ["VICTORY!", "DOMINATION!", "YOU WIN!", "CHAMPION!"];
+    let quotes = ["dominated the field.", "showed no mercy.", "takes the crown.", "is unstoppable."];
     
-    // In single-player mode, if the AI (O) won, use "Defeat" titles
-    if (State.mode === 'single' && w === 'O') {
+    // Multiplayer perspective
+    if (State.isMultiplayer) {
+      if (w === State.playerRole) {
+        titles = ["VICTORY!", "DOMINATION!", "YOU WON!", "CHAMPION!"];
+        quotes = ["dominated the field.", "takes the crown.", "is the master!"];
+      } else {
+        titles = ["OUCH!", "DEFEAT", "TOUGH BREAK", "NEXT TIME!"];
+        quotes = ["got outplayed.", "almost had it!", "needs a rematch!"];
+      }
+    } 
+    // Single-player perspective (AI won)
+    else if (State.mode === 'single' && w === 'O') {
       titles = ["DEFEAT", "GAME OVER", "AI VICTORIOUS", "AI DOMINATES"];
     }
 
-    const quotes = ["dominated the field.", "showed no mercy.", "takes the crown.", "is unstoppable."];
-    
+    const isDefeat = (State.isMultiplayer && w !== State.playerRole) || (State.mode === 'single' && w === 'O');
+
     goTitle.textContent = titles[Math.floor(Math.random() * titles.length)];
-    goTitle.className   = `gameover-title win-${w.toLowerCase()}`;
+    goTitle.className   = `gameover-title ${isDefeat ? 'defeat' : `win-${w.toLowerCase()}`}`;
     goSubtitle.textContent = `${winnerName} ${quotes[Math.floor(Math.random() * quotes.length)]}`;
     
     // Only launch confetti if a human won (X in single mode, either in dual)
@@ -306,19 +331,30 @@ function _renderGameOverScreen(winner, reason) {
 
   const crown = `<span class="score-winner-crown">${makeCrownSvg()}</span>`;
 
+  // Explicitly annotate players natively with (You) for clarity if multiplayer
+  const xName = State.isMultiplayer && State.playerRole === 'X' ? `${State.names.X} (You)` : State.names.X;
+  const oName = State.isMultiplayer && State.playerRole === 'O' ? `${State.names.O} (You)` : State.names.O;
+
   // Order the score rows: winner always on top
   const xRow = `
     <div class="gameover-score-row x-row ${isXWinner ? 'winner-row' : (isOWinner ? 'loser-row' : '')}">
-      <span class="score-name-cell">${isXWinner ? crown : ''}${State.names.X}</span>
+      <span class="score-name-cell">${isXWinner ? crown : ''}${xName}</span>
       <span>${State.scores.X} pts</span>
     </div>`;
   const oRow = `
     <div class="gameover-score-row o-row ${isOWinner ? 'winner-row' : (isXWinner ? 'loser-row' : '')}">
-      <span class="score-name-cell">${isOWinner ? crown : ''}${State.names.O}</span>
+      <span class="score-name-cell">${isOWinner ? crown : ''}${oName}</span>
       <span>${State.scores.O} pts</span>
     </div>`;
 
   goScores.innerHTML = isOWinner ? (oRow + xRow) : (xRow + oRow);
+  
+  // Hide scores if both are zero (classic 3x3 win with no points)
+  if (State.scores.X === 0 && State.scores.O === 0) {
+    goScores.style.display = 'none';
+  } else {
+    goScores.style.display = 'flex';
+  }
 
   // Duration label for the meta line
   const durLabel =

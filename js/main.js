@@ -2,9 +2,11 @@ import { App } from './app.js';
 import { State } from './state.js';
 import { Render } from './render.js';
 import { initZoomPan } from './zoom.js';
+import { Multiplayer } from './multiplayer.js';
 
 // Bridge for remaining inline onclicks if any (gradual migration)
 window.App = App;
+window.Multiplayer = Multiplayer;
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -13,6 +15,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ---- Touch zoom/pan ---- */
   initZoomPan(Render);
+
+  /* ---- Multiplayer invite check ---- */
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomCode = urlParams.get('room');
+  if (roomCode) {
+    document.getElementById('join-code-input').value = roomCode;
+    Multiplayer.joinRoom();
+  }
 
   /* ---- Event Delegation for Main Menu ---- */
   // (We'll keep some onclicks for now for simplicity, but let's shift name inputs to listeners)

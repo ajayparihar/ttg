@@ -112,4 +112,18 @@ export const State = {
 
   /** True while the pause modal is open. */
   paused: false,
+
+  /* ---- Multiplayer ---- */
+
+  /** True if this is a remote multiplayer game. */
+  isMultiplayer: false,
+
+  /** The 4-character room code. */
+  roomCode: null,
+
+  /** 'X' (Host) or 'O' (Guest). */
+  playerRole: null,
+
+  /** User ID of the local player. */
+  userId: null,
 };

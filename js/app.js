@@ -5,6 +5,7 @@ import { createGrid } from './grid.js';
 import { clearTimers, triggerAI, endGame } from './game.js';
 import { clamp } from './utils.js';
 import { clampPan } from './zoom.js';
+import { Multiplayer } from './multiplayer.js';
 
 export const App = {
 
@@ -12,7 +13,17 @@ export const App = {
   currentScreen: 'menu',
 
   /** Mode chosen on the menu but not yet committed to State. */
-  selectedMode: 'dual',
+  selectedDuration: 180,
+  
+  /** 
+   * Pre-loads duration and mode settings based on constants.
+   */
+  setupModeDefaults(mode) {
+    this.selectedMode = mode;
+    if (!MODE) {
+      this.selectedDuration = 0;
+    }
+  },
 
   /** Duration chosen on the mode screen but not yet committed to State. */
   selectedDuration: 180,
@@ -35,7 +46,7 @@ export const App = {
    * @param {'single'|'dual'} mode
    */
   goToMode(mode) {
-    this.selectedMode = mode;
+    this.setupModeDefaults(mode);
     
     if (MODE) {
       const label = mode === 'single' ? 'Single Player' : 'Dual Player';
@@ -127,18 +138,17 @@ export const App = {
     State.lastGridSize  = 3;
 
     // Sync HUD elements with the new State
-    document.getElementById('score-x-name').textContent = State.names.X;
-    document.getElementById('score-o-name').textContent = State.names.O;
-    document.getElementById('score-x-val').textContent  = '0';
-    document.getElementById('score-o-val').textContent  = '0';
+    Render.updateScore('X');
+    Render.updateScore('O');
     document.getElementById('mode-badge').textContent   =
-      State.mode === 'single' ? 'AI' : 'Local';
+      State.isMultiplayer ? 'Online' : (State.mode === 'single' ? 'AI' : 'Local');
 
     // Reset undo button
     const undoBtn = document.getElementById('undo-btn');
     undoBtn.disabled = false;
     undoBtn.classList.remove('used');
     undoBtn.title = 'Undo last move (1 use)';
+    undoBtn.style.visibility = State.isMultiplayer ? 'hidden' : 'visible';
 
     document.getElementById('ai-thinking').style.display = 'none';
 
@@ -206,6 +216,7 @@ export const App = {
    */
   undo() {
     if (State.undoUsed || !State.undoSnapshot || !State.gameActive) return;
+    if (State.isMultiplayer) return; // Undo is disabled in multiplayer
     if (State.mode === 'single' && State.currentPlayer === 'O')      return; // AI's turn
 
     // Cancel any pending AI move
@@ -289,21 +300,31 @@ export const App = {
     clearTimers();
     document.getElementById('pause-overlay').style.display = 'none';
     document.getElementById('pause-modal').style.display   = 'none';
-    this.showScreen('menu');
+    if (State.isMultiplayer) Multiplayer.leaveRoom();
+    else this.showScreen('menu');
   },
 
   /* ---- Post-game actions ---- */
 
   /** Starts a new game with the same settings (from the game-over screen). */
   rematch() {
-    this.initGame();
+    if (State.isMultiplayer) {
+      if (State.playerRole === 'X') {
+        Multiplayer.hostStartGame();
+      } else {
+        App.showToast("Waiting for host to rematch...");
+      }
+    } else {
+      this.initGame();
+    }
   },
 
   /** Returns to the main menu from anywhere. */
   goHome() {
     State.gameActive = false;
     clearTimers();
-    this.showScreen('menu');
+    if (State.isMultiplayer) Multiplayer.leaveRoom();
+    else this.showScreen('menu');
   },
 
   /* ---- Settings panel ---- */
@@ -383,7 +404,7 @@ export const App = {
       const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() || '#0a0a0a';
       
       const canvas = await html2canvas(card, {
-        scale: 3,
+        scale: 3, // Restored high quality
         useCORS: true,
         allowTaint: true,
         backgroundColor: bgColor,
@@ -391,23 +412,15 @@ export const App = {
         onclone: (clonedDoc) => {
           const clonedCard = clonedDoc.querySelector('.gameover-card');
           if (clonedCard) {
-            // Force fonts and styles for high fidelity
             clonedCard.style.transform = 'none';
             clonedCard.style.animation = 'none';
-            clonedCard.style.boxShadow = 'none'; // Card shadow can be tricky in html2canvas if clipped
+            clonedCard.style.boxShadow = 'none';
             clonedCard.style.margin = '0';
             
-            // Ensure icons and text are sharp
             clonedCard.querySelectorAll('*').forEach(el => {
               el.style.textRendering = 'optimizeLegibility';
               el.style.webkitFontSmoothing = 'antialiased';
             });
-
-            // Ensure winner glow is captured (box-shadow)
-            const winnerInitial = clonedCard.querySelector('.winner-initial');
-            if (winnerInitial) {
-              winnerInitial.style.filter = 'none'; // Re-verify glows
-            }
           }
         }
       });

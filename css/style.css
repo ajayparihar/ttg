@@ -537,8 +537,9 @@ body {
   touch-action: none;
 }
 
+
 .grid-zoom-container {
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, filter 0.4s ease, opacity 0.4s ease;
   transform-origin: center center;
 }
 
@@ -567,6 +568,7 @@ body {
 .game-grid.waiting {
   pointer-events: none;
 }
+
 
 /* Cell */
 .cell {
@@ -865,6 +867,7 @@ body {
 .gameover-title.win-x { color: var(--color-x); }
 .gameover-title.win-o { color: var(--color-o); }
 .gameover-title.draw  { color: var(--fg-secondary); }
+.gameover-title.defeat { color: #ff4444; text-shadow: 0 0 10px rgba(255, 68, 68, 0.5); }
 
 .score-name-cell {
   display: flex;
@@ -1306,4 +1309,281 @@ body {
 @keyframes modalIn {
   from { opacity: 0; transform: translate(-50%, -45%) scale(0.95); }
   to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.hidden { display: none !important; }
+
+/* ============================================================
+   MULTIPLAYER UI
+   ============================================================ */
+.lobby-options {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  flex: 1;
+  justify-content: center;
+  padding-bottom: 40px;
+}
+
+.lobby-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+}
+
+.lobby-card:hover {
+  border-color: var(--color-x);
+  transform: translateY(-2px);
+}
+
+.lobby-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.lobby-card p {
+  font-size: 14px;
+  color: var(--fg-secondary);
+  margin-bottom: 20px;
+}
+
+.lobby-divider {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fg-secondary);
+}
+
+.lobby-divider::before,
+.lobby-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--card-border);
+}
+
+.join-input-group {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.join-input-group .btn {
+  white-space: nowrap;
+  padding: 0 20px;
+}
+
+.room-code-input {
+  flex: 1;
+  min-width: 0; /* Allow it to shrink below content size */
+  background: var(--bg-secondary);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  height: 50px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg-primary);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.room-code-input:focus {
+  border-color: var(--color-x);
+}
+
+.waiting-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  box-sizing: border-box;
+  flex: 1;
+  justify-content: center;
+}
+
+.room-info {
+  width: 100%;
+  background: var(--card-bg);
+  padding: 24px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.room-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fg-secondary);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.room-code-display {
+  font-size: clamp(32px, 10vw, 42px);
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: var(--color-x);
+  margin-bottom: 20px;
+  font-family: monospace;
+  position: relative;
+  display: inline-block;
+  padding: 0 40px;
+}
+
+#room-code-text {
+  display: inline-block;
+}
+
+.copy-mini-btn {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  background: var(--btn-bg);
+  border: 1px solid var(--card-border);
+  color: var(--fg-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.copy-mini-btn:hover {
+  background: var(--btn-hover);
+  border-color: var(--fg-secondary);
+  color: var(--fg-primary);
+}
+
+.copy-mini-btn:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+.copy-mini-btn.copied {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+
+
+.waiting-status {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.pulse-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 3px solid var(--color-x);
+  animation: pulse 2s infinite ease-in-out;
+  position: relative;
+}
+
+.pulse-ring::after {
+  content: "";
+  position: absolute;
+  top: -3px; left: -3px; right: -3px; bottom: -3px;
+  border-radius: 50%;
+  border: 3px solid var(--color-x);
+  animation: pulse-out 2s infinite ease-out;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes pulse-out {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+.player-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  width: 100%;
+}
+
+.player-slot {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.5;
+  transition: all 0.3s;
+}
+
+.player-slot.active {
+  opacity: 1;
+  border-color: var(--color-x);
+  box-shadow: 0 0 20px rgba(232, 52, 74, 0.2);
+}
+
+.player-slot.active:nth-child(2) {
+  border-color: var(--color-o);
+  box-shadow: 0 0 20px rgba(44, 110, 242, 0.2);
+}
+
+.slot-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 20px;
+}
+
+.slot-icon.x-color { background: var(--color-x); color: white; }
+.slot-icon.o-color { background: var(--color-o); color: white; }
+
+#slot-guest-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 340px) {
+  .player-slots { grid-template-columns: 1fr; }
+  .room-code-display { font-size: 32px; letter-spacing: 4px; }
 }
