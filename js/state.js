@@ -19,6 +19,9 @@ export const State = {
   /** Game duration in seconds. 0 = unlimited (no timer). */
   duration: 180,
 
+  /** AI difficulty level (1-10). */
+  aiLevel: 6,
+
   /** Current board size (starts at 3, grows on ties). */
   gridSize: 3,
 

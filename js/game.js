@@ -188,7 +188,7 @@ export function triggerAI() {
     if (!State.gameActive) return;
 
     // AI receives a copy so the lookahead cannot mutate the real board
-    const move = AI.getBestMove(copyGrid(State.grid), 'O', 'X');
+    const move = AI.getBestMove(copyGrid(State.grid), 'O', 'X', State.aiLevel);
     if (move) makeMove(move.r, move.c, /* isAI */ true);
   }, delay);
 }

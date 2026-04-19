@@ -16,8 +16,8 @@ export const MAX_CHAIN_SCORE = 50;
 /** Milliseconds the AI "thinks" before playing — keeps UX from feeling instant. */
 export const AI_DELAY_MS = 500;
 
-/** AI difficulty level: 1 = easiest, 5 = toughest. */
-export const LEVEL = 5;
+/** AI difficulty level: 1 = easiest, 10 = toughest. */
+export const LEVEL = 6;
 
 /** When true, all durations are available. When false, only unlimited is available and selection is skipped. */
 export const MODE = false;
