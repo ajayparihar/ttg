@@ -1,22 +1,8 @@
-'use strict';
+import { LEVEL, chainScore } from './constants.js';
+import { check3x3Win, getChainLength } from './grid.js';
+import { randomChoice } from './utils.js';
 
-/* ============================================================
-   AI OPPONENT
-   A heuristic (non-minimax) AI that plays reasonably well
-   without being unbeatable, keeping the game fun.
-
-   Priority order:
-     1. Win immediately if possible.
-     2. Block the opponent's immediate win / long chain.
-     3. Maximise own chain score on this move.
-     4. Block the opponent from scoring a chain.
-     5. Prefer centre → corners → random empty cell.
-
-   All grid mutations are temporary (set → evaluate → unset),
-   so the original State.grid is never touched.
-   ============================================================ */
-
-const AI = {
+export const AI = {
 
   /**
    * Returns the best move for the AI player.
@@ -42,7 +28,7 @@ const AI = {
     const skill = Math.min(Math.max(Number.isFinite(LEVEL) ? LEVEL : 3, 1), 5);
 
     if (skill === 1) {
-      const [r, c] = this._randomChoice(empty);
+      const [r, c] = randomChoice(empty);
       return { r, c };
     }
 
@@ -76,14 +62,14 @@ const AI = {
 
     if (best && bestScore > 0) {
       if (skill === 2 && bestScore < 20) {
-        const [r, c] = this._randomChoice(empty);
+        const [r, c] = randomChoice(empty);
         return { r, c };
       }
       return best;
     }
 
     if (skill === 2) {
-      const [r, c] = this._randomChoice(empty);
+      const [r, c] = randomChoice(empty);
       return { r, c };
     }
 
@@ -108,16 +94,12 @@ const AI = {
     ].filter(([r, c]) => !grid[r][c]);
 
     if (corners.length) {
-      const [r, c] = this._randomChoice(corners);
+      const [r, c] = randomChoice(corners);
       return { r, c };
     }
 
-    const [r, c] = this._randomChoice(empty);
+    const [r, c] = randomChoice(empty);
     return { r, c };
-  },
-
-  _randomChoice(array) {
-    return array[Math.floor(Math.random() * array.length)];
   },
 
   /**

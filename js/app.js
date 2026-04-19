@@ -1,13 +1,12 @@
-'use strict';
+import { State } from './state.js';
+import { Render } from './render.js';
+import { MODE, ZOOM_STEP, MAX_ZOOM } from './constants.js';
+import { createGrid } from './grid.js';
+import { clearTimers, triggerAI, endGame } from './game.js';
+import { clamp } from './utils.js';
+import { clampPan } from './zoom.js';
 
-/* ============================================================
-   APP CONTROLLER
-   High-level navigation and settings — the bridge between
-   the HTML onclick handlers and the game/render layers.
-   Everything a button or screen transition needs lives here.
-   ============================================================ */
-
-const App = {
+export const App = {
 
   /** Currently visible screen id (without the '-screen' suffix). */
   currentScreen: 'menu',
@@ -215,7 +214,7 @@ const App = {
 
     // Restore snapshot
     const snap          = State.undoSnapshot;
-    State.grid          = copyGrid(snap.grid);
+    State.grid          = snap.grid; // copyGrid skipped as snapshot was already a copy
     State.scores        = { ...snap.scores };
     State.currentPlayer = snap.currentPlayer;
     State.scoredChains  = new Set(snap.scoredChains);
@@ -255,6 +254,16 @@ const App = {
     }
 
     clampPan();
+    Render.setZoomDisplay(State.zoomLevel);
+  },
+  
+  /**
+   * Resets zoom to 100% and centers the grid.
+   */
+  resetZoom() {
+    State.zoomLevel = 1.0;
+    State.panX = 0;
+    State.panY = 0;
     Render.setZoomDisplay(State.zoomLevel);
   },
 
@@ -442,11 +451,19 @@ const App = {
 
         const file = new File([blob], 'TicTacGrow-Result.png', { type: 'image/png' });
 
+        const isWin  = State.scores.X > State.scores.O;
+        const isLoss = State.mode === 'single' && State.scores.O > State.scores.X;
+        const isDraw = State.scores.X === State.scores.O;
+
+        let shareText = `I just dominated in Tic Tac Grow! Check out the score:`;
+        if (isLoss) shareText = `Tough battle in Tic Tac Grow! Check out the score:`;
+        if (isDraw) shareText = `A close draw in Tic Tac Grow! Check out the score:`;
+
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               title: 'Tic Tac Grow',
-              text: `I just dominanted in Tic Tac Grow! Check out the score:`,
+              text: shareText,
               files: [file]
             });
           } catch (sErr) {

@@ -1,29 +1,13 @@
-'use strict';
-
-/* ============================================================
-   ZOOM & PAN SYSTEM
-   Handles pinch-to-zoom and single-finger panning via touch
-   events on the grid wrapper.  Button-based zoom is driven by
-   App.zoom(), which reuses clamp() and clampPan() from here.
-   ============================================================ */
-
-/**
- * Clamps a value between min and max (inclusive).
- * @param {number} val
- * @param {number} min
- * @param {number} max
- * @returns {number}
- */
-function clamp(val, min, max) {
-  return Math.max(min, Math.min(max, val));
-}
+import { State } from './state.js';
+import { MAX_ZOOM } from './constants.js';
+import { clamp } from './utils.js';
 
 /**
  * Calculates the Euclidean distance between two touch points.
  * @param {Touch[]} touches - Exactly two touch points.
  * @returns {number} Distance in pixels.
  */
-function getTouchDist(touches) {
+export function getTouchDist(touches) {
   const dx = touches[0].clientX - touches[1].clientX;
   const dy = touches[0].clientY - touches[1].clientY;
   return Math.sqrt(dx * dx + dy * dy);
@@ -34,7 +18,7 @@ function getTouchDist(touches) {
  * completely out of view when zoomed in.
  * Reads current element dimensions from the DOM.
  */
-function clampPan() {
+export function clampPan() {
   const wrapper = document.getElementById('grid-wrapper');
   const gridEl  = document.getElementById('game-grid');
 
@@ -58,13 +42,16 @@ function clampPan() {
  *
  * Must be called once after DOMContentLoaded.
  */
-function initZoomPan() {
+export function initZoomPan(Render) {
   const wrapper = document.getElementById('grid-wrapper');
 
   let currentTouches = [];
   let panStarted     = false;
   let panOriginX     = 0;
   let panOriginY     = 0;
+  let touchStartX    = 0;
+  let touchStartY    = 0;
+  const PAN_THRESHOLD = 8; // Pixels of movement before panning starts
 
   /* ---- touchstart ---- */
   wrapper.addEventListener('touchstart', (e) => {
@@ -77,10 +64,10 @@ function initZoomPan() {
       State.pinchStartZoom = State.zoomLevel;
 
     } else if (currentTouches.length === 1 && State.zoomLevel > 1.001) {
-      // Begin single-finger pan (only available when zoomed in)
-      panStarted  = true;
-      panOriginX  = currentTouches[0].clientX - State.panX;
-      panOriginY  = currentTouches[0].clientY - State.panY;
+      // Track start position for threshold check
+      touchStartX = currentTouches[0].clientX;
+      touchStartY = currentTouches[0].clientY;
+      panStarted  = false; // Don't start until threshold is met
     }
   }, { passive: true });
 
@@ -89,18 +76,30 @@ function initZoomPan() {
     currentTouches = Array.from(e.touches);
 
     if (State.isPinching && currentTouches.length === 2) {
-      e.preventDefault(); // prevent browser default zoom
+      if (e.cancelable) e.preventDefault(); // prevent browser default zoom
       const dist        = getTouchDist(currentTouches);
       const scale       = dist / State.pinchStartDist;
       State.zoomLevel   = clamp(State.pinchStartZoom * scale, 1.0, MAX_ZOOM);
       Render.setZoomDisplay(State.zoomLevel);
 
-    } else if (panStarted && currentTouches.length === 1) {
-      e.preventDefault(); // prevent page scroll during pan
-      State.panX = currentTouches[0].clientX - panOriginX;
-      State.panY = currentTouches[0].clientY - panOriginY;
-      clampPan();
-      Render.setZoomDisplay(State.zoomLevel);
+    } else if (currentTouches.length === 1 && State.zoomLevel > 1.001) {
+      const dx = currentTouches[0].clientX - touchStartX;
+      const dy = currentTouches[0].clientY - touchStartY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (!panStarted && dist > PAN_THRESHOLD) {
+        panStarted = true;
+        panOriginX = currentTouches[0].clientX - State.panX;
+        panOriginY = currentTouches[0].clientY - State.panY;
+      }
+
+      if (panStarted) {
+        if (e.cancelable) e.preventDefault(); // prevent page scroll during pan
+        State.panX = currentTouches[0].clientX - panOriginX;
+        State.panY = currentTouches[0].clientY - panOriginY;
+        clampPan();
+        Render.setZoomDisplay(State.zoomLevel);
+      }
     }
   }, { passive: false });
 

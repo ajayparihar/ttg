@@ -1,12 +1,18 @@
-'use strict';
-
-/* ============================================================
-   GAME LOGIC
-   Orchestrates move execution, turn switching, AI triggering,
-   grid expansion, and game-over flow.
-   State is read/written only through the State object;
-   DOM updates are delegated entirely to Render.
-   ============================================================ */
+import { State } from './state.js';
+import { Render, setCellClickHandler } from './render.js';
+import { AI } from './ai.js';
+import { 
+  copyGrid, 
+  isGridFull, 
+  check3x3Win, 
+  scoreMoveOnGrid, 
+  getChainLength, 
+  getChainCells, 
+  createGrid 
+} from './grid.js';
+import { launchConfetti } from './confetti.js';
+import { App } from './app.js';
+import { makeCrownSvg } from './svg.js';
 
 /* ---- Input handling ---- */
 
@@ -16,7 +22,7 @@
  *
  * @param {MouseEvent} e
  */
-function handleCellClick(e) {
+export function handleCellClick(e) {
   const cell = e.currentTarget;
   const r    = parseInt(cell.dataset.r, 10);
   const c    = parseInt(cell.dataset.c, 10);
@@ -24,13 +30,15 @@ function handleCellClick(e) {
   if (!State.gameActive)       return; // game not running
   if (State.paused)            return; // pause modal open
   if (State.grid[r][c])        return; // cell already occupied
-  if (State.zoomLevel > 1.001) return; // must zoom out to play
 
   // Ignore human clicks during AI's turn
   if (State.mode === 'single' && State.currentPlayer === 'O') return;
 
   makeMove(r, c);
 }
+
+// Register handler with Render module to break circular dependency
+setCellClickHandler(handleCellClick);
 
 /* ---- Core move flow ---- */
 
@@ -42,7 +50,7 @@ function handleCellClick(e) {
  * @param {number}  c     - Column index.
  * @param {boolean} [isAI=false] - True when the AI is calling this function.
  */
-function makeMove(r, c, isAI = false) {
+export function makeMove(r, c, isAI = false) {
   if (!State.gameActive || State.grid[r][c]) return;
 
   // Save undo snapshot before every human move
@@ -155,7 +163,7 @@ function _processMoveOnLargeGrid(r, c, player) {
 /**
  * Advances to the next player's turn and triggers the AI if applicable.
  */
-function switchTurn() {
+export function switchTurn() {
   State.currentPlayer = State.currentPlayer === 'X' ? 'O' : 'X';
   Render.updateTurnIndicator();
 
@@ -169,7 +177,7 @@ function switchTurn() {
  * AI_DELAY_MS milliseconds.  The delay prevents the AI from feeling
  * instantaneous and gives the human a moment to see what just happened.
  */
-function triggerAI() {
+export function triggerAI() {
   document.getElementById('ai-thinking').style.display = 'flex';
 
   // Random delay to simulate human thinking: 500ms to 2500ms
@@ -191,7 +199,7 @@ function triggerAI() {
  * Grows the board by one row and one column (tie resolution).
  * Rebuilds the grid DOM after a brief animation delay.
  */
-function expandGrid() {
+export function expandGrid() {
   const oldSize  = State.gridSize;
   State.gridSize += 1;
 
@@ -218,7 +226,7 @@ function expandGrid() {
  * @param {'X'|'O'|'draw'} winner - Winning player mark, or 'draw'.
  * @param {'classic'|'timeout'} reason - How the game ended.
  */
-function endGame(winner, reason) {
+export function endGame(winner, reason) {
   State.gameActive = false;
   clearTimers();
 
@@ -240,6 +248,8 @@ function _renderGameOverScreen(winner, reason) {
   const goMeta     = document.getElementById('go-meta');
 
   const isDraw = (winner === 'draw' || (!winner && State.scores.X === State.scores.O));
+  // Determine winner by score if not explicitly passed, or 'draw'
+  const w = isDraw ? 'draw' : (winner || (State.scores.X > State.scores.O ? 'X' : 'O'));
 
   if (isDraw) {
     goEmoji.innerHTML = '🤝'; // Simple hand-shake for draw
@@ -250,39 +260,56 @@ function _renderGameOverScreen(winner, reason) {
     goTitle.className   = 'gameover-title draw';
     goSubtitle.textContent = "A well-fought battle.";
   } else {
-    // Determine winner by score if not explicitly passed
-    const w = winner || (State.scores.X > State.scores.O ? 'X' : 'O');
     const winnerName = State.names[w];
     
-    goEmoji.innerHTML = `<div class="winner-initial ${w.toLowerCase()}-color">${w}</div>`;
+    goEmoji.innerHTML = `
+      <div class="winner-initial ${w.toLowerCase()}-color">
+        <div class="winner-crown">${makeCrownSvg()}</div>
+        ${w}
+      </div>`;
     goEmoji.className = 'gameover-emoji';
     
-    // Choose an emotional title
-    const titles = ["VICTORY!", "DOMINATION!", "YOU WIN!", "CHAMPION!"];
+    // Choose an emotional title based on the outcome
+    let titles = ["VICTORY!", "DOMINATION!", "YOU WIN!", "CHAMPION!"];
+    
+    // In single-player mode, if the AI (O) won, use "Defeat" titles
+    if (State.mode === 'single' && w === 'O') {
+      titles = ["DEFEAT", "GAME OVER", "AI VICTORIOUS", "AI DOMINATES"];
+    }
+
     const quotes = ["dominated the field.", "showed no mercy.", "takes the crown.", "is unstoppable."];
     
     goTitle.textContent = titles[Math.floor(Math.random() * titles.length)];
     goTitle.className   = `gameover-title win-${w.toLowerCase()}`;
     goSubtitle.textContent = `${winnerName} ${quotes[Math.floor(Math.random() * quotes.length)]}`;
     
-    launchConfetti(w);
+    // Only launch confetti if a human won (X in single mode, either in dual)
+    if (State.mode === 'dual' || w === 'X') {
+      launchConfetti(w);
+    }
   }
 
   // Build the two score rows
-  const isXWinner = State.scores.X > State.scores.O;
-  const isOWinner = State.scores.O > State.scores.X;
+  // Determine winners/losers based on the 'w' variable (the game winner)
+  // This ensures correct ordering even if scores are tied (e.g. 3x3 board win)
+  const isXWinner = (w === 'X');
+  const isOWinner = (w === 'O');
 
-  // Use a cleaner score display
-  goScores.innerHTML = `
-    <div class="gameover-score-row x-row ${isXWinner ? 'winner-row' : ''}">
-      <span>${State.names.X}</span>
+  const crown = `<span class="score-winner-crown">${makeCrownSvg()}</span>`;
+
+  // Order the score rows: winner always on top
+  const xRow = `
+    <div class="gameover-score-row x-row ${isXWinner ? 'winner-row' : (isOWinner ? 'loser-row' : '')}">
+      <span class="score-name-cell">${isXWinner ? crown : ''}${State.names.X}</span>
       <span>${State.scores.X} pts</span>
-    </div>
-    <div class="gameover-score-row o-row ${isOWinner ? 'winner-row' : ''}">
-      <span>${State.names.O}</span>
+    </div>`;
+  const oRow = `
+    <div class="gameover-score-row o-row ${isOWinner ? 'winner-row' : (isXWinner ? 'loser-row' : '')}">
+      <span class="score-name-cell">${isOWinner ? crown : ''}${State.names.O}</span>
       <span>${State.scores.O} pts</span>
-    </div>
-  `;
+    </div>`;
+
+  goScores.innerHTML = isOWinner ? (oRow + xRow) : (xRow + oRow);
 
   // Duration label for the meta line
   const durLabel =
@@ -313,7 +340,7 @@ function _persistStats() {
  * Clears both the countdown interval and any pending AI timeout.
  * Safe to call even if neither is active.
  */
-function clearTimers() {
+export function clearTimers() {
   if (State.timerInterval) { clearInterval(State.timerInterval); State.timerInterval = null; }
   if (State.aiTimeout)     { clearTimeout(State.aiTimeout);      State.aiTimeout     = null; }
 }

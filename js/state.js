@@ -12,7 +12,7 @@
  * @typedef {'X'|'O'|''} Cell
  */
 
-const State = {
+export const State = {
   /** @type {GameMode} Active game mode. */
   mode: 'dual',
 

@@ -1,12 +1,21 @@
-'use strict';
+import { State } from './state.js';
+import { 
+  MIN_CELL_PX, 
+  STRIKE_OVERSHOOT_MIN, 
+  STRIKE_OVERSHOOT_JITTER, 
+  STRIKE_POS_JITTER, 
+  STRIKE_CURVE_BASE, 
+  STRIKE_CURVE_JITTER 
+} from './constants.js';
+import { makeXSvg, makeOSvg, makeGhostX, makeGhostO } from './svg.js';
 
-/* ============================================================
-   RENDER ENGINE
-   All DOM reads/writes live here. Game logic must never touch
-   the DOM directly — it calls Render methods instead.
-   ============================================================ */
+/** Callback to satisfy circular dependency with game.js handleCellClick */
+let onCellClick = null;
+export function setCellClickHandler(handler) {
+  onCellClick = handler;
+}
 
-const Render = {
+export const Render = {
 
   /** Pixel size of each cell on the current board, set during buildGrid(). */
   cellSize: 0,
@@ -76,9 +85,9 @@ const Render = {
           // Empty cell — add ghost preview and click handler
           const ghost = document.createElement('div');
           ghost.className = 'cell-ghost';
-          ghost.innerHTML = State.currentPlayer === 'X' ? makeGhostX() : makeGhostO();
+          ghost.innerHTML = this.getGhostHtml();
           cell.appendChild(ghost);
-          cell.addEventListener('click', handleCellClick);
+          if (onCellClick) cell.addEventListener('click', onCellClick);
         }
 
         gridEl.appendChild(cell);
@@ -115,7 +124,7 @@ const Render = {
     cell.classList.add(`${player.toLowerCase()}-marked`, 'marked');
 
     // Detach click listener — this cell is now occupied
-    cell.removeEventListener('click', handleCellClick);
+    if (onCellClick) cell.removeEventListener('click', onCellClick);
   },
 
   /* ---- DOM helpers ---- */
@@ -155,9 +164,19 @@ const Render = {
     this.updateGridBorder();
 
     // Refresh ghost previews for the new current player
+    const html = this.getGhostHtml();
     document.querySelectorAll('.cell:not(.marked) .cell-ghost').forEach(ghost => {
-      ghost.innerHTML = State.currentPlayer === 'X' ? makeGhostX() : makeGhostO();
+      ghost.innerHTML = html;
     });
+  },
+
+  /**
+   * Helper to determine what (if any) ghost mark to show.
+   * In single-player mode, we hide the ghost during the AI's turn.
+   */
+  getGhostHtml() {
+    if (State.mode === 'single' && State.currentPlayer === 'O') return '';
+    return State.currentPlayer === 'X' ? makeGhostX() : makeGhostO();
   },
 
   /**
@@ -356,9 +375,11 @@ const Render = {
 
     const container = document.getElementById('grid-zoom-container');
     container.style.transform = `translate(${State.panX}px,${State.panY}px) scale(${level})`;
-
-    const lockOverlay = document.getElementById('zoom-lock');
-    if (level > 1.0) lockOverlay.classList.add('visible');
-    else             lockOverlay.classList.remove('visible');
+    
+    // Show/hide Reset Zoom button based on whether we are zoomed in
+    const resetBtn = document.getElementById('reset-zoom-btn');
+    if (resetBtn) {
+      resetBtn.style.display = level > 1.001 ? 'flex' : 'none';
+    }
   },
 };

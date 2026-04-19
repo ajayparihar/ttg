@@ -1,38 +1,16 @@
-'use strict';
-
-/* ============================================================
-   GRID UTILITIES & WIN/SCORE LOGIC
-   Pure functions — no DOM access, no State mutation.
-   All functions take grid arrays as arguments so they can be
-   called safely on copies (e.g. by the AI lookahead).
-   ============================================================ */
+import { createGrid, copyGrid } from './utils.js';
+import { chainScore } from './constants.js';
 
 /* ---- Grid construction ---- */
 
-/**
- * Creates a new empty size×size grid.
- * @param {number} size
- * @returns {string[][]}
- */
-function createGrid(size) {
-  return Array.from({ length: size }, () => Array(size).fill(''));
-}
-
-/**
- * Returns a shallow-row copy of a grid (safe for mutation during AI lookahead).
- * @param {string[][]} grid
- * @returns {string[][]}
- */
-function copyGrid(grid) {
-  return grid.map(row => [...row]);
-}
+export { createGrid, copyGrid };
 
 /**
  * Returns true when every cell in the grid has been filled.
  * @param {string[][]} grid
  * @returns {boolean}
  */
-function isGridFull(grid) {
+export function isGridFull(grid) {
   return grid.every(row => row.every(cell => cell !== ''));
 }
 
@@ -50,7 +28,7 @@ function isGridFull(grid) {
  * @param {string} player - 'X' or 'O'.
  * @returns {number} Total length of the chain through (r, c).
  */
-function getChainLength(grid, r, c, dr, dc, player) {
+export function getChainLength(grid, r, c, dr, dc, player) {
   const size = grid.length;
   let count = 1;
 
@@ -86,7 +64,7 @@ function getChainLength(grid, r, c, dr, dc, player) {
  * @param {string} player
  * @returns {{ r: number, c: number }}
  */
-function getChainStart(grid, r, c, dr, dc, player) {
+export function getChainStart(grid, r, c, dr, dc, player) {
   let sr = r - dr, sc = c - dc;
   while (
     sr >= 0 && sr < grid.length &&
@@ -112,7 +90,7 @@ function getChainStart(grid, r, c, dr, dc, player) {
  * @param {number} len - Chain length.
  * @returns {string}
  */
-function chainId(r, c, dr, dc, len) {
+export function chainId(r, c, dr, dc, len) {
   // Normalise direction so (−dr, −dc) maps to the same key as (dr, dc)
   const ndr = (dr < 0 || (dr === 0 && dc < 0)) ? -dr : dr;
   const ndc = (dr < 0 || (dr === 0 && dc < 0)) ? -dc : dc;
@@ -130,7 +108,7 @@ function chainId(r, c, dr, dc, len) {
  * @param {string} player
  * @returns {number[][]}
  */
-function getChainCells(grid, r, c, dr, dc, player) {
+export function getChainCells(grid, r, c, dr, dc, player) {
   const cells = [[r, c]];
   const size = grid.length;
 
@@ -162,7 +140,7 @@ function getChainCells(grid, r, c, dr, dc, player) {
  * @param {string[][]} grid - Must be exactly 3×3.
  * @returns {{ winner: string, cells: number[][] }|null}
  */
-function check3x3Win(grid) {
+export function check3x3Win(grid) {
   // All possible winning triplets on a 3×3 board
   const WIN_LINES = [
     [[0,0],[0,1],[0,2]], // top row
@@ -201,7 +179,7 @@ function check3x3Win(grid) {
  * @param {Set<string>} scoredChains - Already-rewarded chain IDs.
  * @returns {{ points: number, chains: number[][][] }} Points and newly scored chains.
  */
-function scoreMoveOnGrid(grid, r, c, player, scoredChains) {
+export function scoreMoveOnGrid(grid, r, c, player, scoredChains) {
   // The four directions to check (pairs cover all eight because getChainLength
   // walks both ways from the origin cell)
   const DIRECTIONS = [[0,1], [1,0], [1,1], [1,-1]];

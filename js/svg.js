@@ -1,18 +1,16 @@
-'use strict';
-
-/* ============================================================
-   SVG GENERATORS
-   Returns inline SVG strings for X marks, O marks, and their
-   semi-transparent "ghost" previews shown on cell hover.
-   The animated draw-on effect is driven by CSS (mark-path class).
-   ============================================================ */
+import { 
+  MARK_ROT_JITTER, 
+  MARK_SCALE_BASE, 
+  MARK_SCALE_JITTER, 
+  MARK_POS_JITTER 
+} from './constants.js';
 
 /**
  * Returns a small randomized transform for each mark.
  * This adds subtle rotation, flips, and size variance.
  * @returns {string}
  */
-function randomMarkTransform() {
+export function randomMarkTransform() {
   const rotate = (Math.random() * (MARK_ROT_JITTER * 2) - MARK_ROT_JITTER).toFixed(1);
   const scale = MARK_SCALE_BASE + Math.random() * MARK_SCALE_JITTER;
   const flipX = Math.random() < 0.15 ? -1 : 1;
@@ -28,7 +26,7 @@ function randomMarkTransform() {
  * @param {string} cls
  * @returns {string} HTML string.
  */
-function makeMarkSvg(char, cls) {
+export function makeMarkSvg(char, cls) {
   const fontSize = 68 + Math.round(Math.random() * 8); // subtle size variation
   return `<svg class="mark-svg ${cls}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
     <g transform="${randomMarkTransform()}">
@@ -41,7 +39,7 @@ function makeMarkSvg(char, cls) {
  * Builds the X mark as text from font.
  * @returns {string} HTML string.
  */
-function makeXSvg() {
+export function makeXSvg() {
   return makeMarkSvg('X', 'x-mark');
 }
 
@@ -49,7 +47,7 @@ function makeXSvg() {
  * Builds the O mark as text from font.
  * @returns {string} HTML string.
  */
-function makeOSvg() {
+export function makeOSvg() {
   return makeMarkSvg('O', 'o-mark');
 }
 
@@ -57,7 +55,7 @@ function makeOSvg() {
  * Builds a ghost X for hover preview.
  * @returns {string} HTML string.
  */
-function makeGhostX() {
+export function makeGhostX() {
   return makeMarkSvg('X', 'x-mark ghost');
 }
 
@@ -65,6 +63,18 @@ function makeGhostX() {
  * Builds a ghost O for hover preview.
  * @returns {string} HTML string.
  */
-function makeGhostO() {
+export function makeGhostO() {
   return makeMarkSvg('O', 'o-mark ghost');
+}
+
+/**
+ * Builds a flat crown icon.
+ * @returns {string} HTML string.
+ */
+export function makeCrownSvg() {
+  return `
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" class="winner-crown-svg">
+      <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" fill="#FFD700"/>
+    </svg>
+  `;
 }

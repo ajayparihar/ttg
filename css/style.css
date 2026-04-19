@@ -728,34 +728,6 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Overlay shown when zoomed in, preventing misclicks */
-.zoom-lock-overlay {
-  position: absolute;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.4);
-  backdrop-filter: blur(2px);
-  border-radius: var(--radius);
-  z-index: 20;
-  pointer-events: none;
-}
-
-.zoom-lock-overlay.visible {
-  display: flex;
-}
-
-.zoom-lock-msg {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  padding: 10px 20px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--fg-secondary);
-  pointer-events: none;
-}
 
 /* AI thinking indicator with animated dots */
 .ai-thinking {
@@ -854,6 +826,23 @@ body {
   box-shadow: 0 0 25px var(--color-o-glow);
 }
 
+.winner-crown {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  width: 42px;
+  height: 42px;
+  transform: rotate(-45deg);
+  z-index: 10;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.winner-crown-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .gameover-title {
   font-size: 34px;
   font-weight: 900;
@@ -867,6 +856,26 @@ body {
 .gameover-title.win-x { color: var(--color-x); }
 .gameover-title.win-o { color: var(--color-o); }
 .gameover-title.draw  { color: var(--fg-secondary); }
+
+.score-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-winner-crown {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+
+.score-winner-crown .winner-crown-svg {
+  width: 100%;
+  height: 100%;
+}
 
 .gameover-subtitle {
   font-size: 15px;
@@ -901,7 +910,12 @@ body {
 .gameover-score-row.winner-row {
   background: rgba(255,255,255,0.08);
   border-color: rgba(255,255,255,0.2);
-  transform: scale(1.02);
+  /* Winner keeps standard size but with highlighted background */
+}
+
+.gameover-score-row.loser-row {
+  transform: scale(0.9);
+  opacity: 0.6;
 }
 
 .gameover-score-row.x-row { color: var(--color-x); }
@@ -1247,3 +1261,40 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 2px; }
+
+/* ============================================================
+   PAUSE MODAL
+   ============================================================ */
+.pause-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 28px 24px;
+  z-index: 151;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 260px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  animation: modalIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.pause-title {
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.pause-subtitle {
+  font-size: 14px;
+  color: var(--fg-secondary);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translate(-50%, -45%) scale(0.95); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}

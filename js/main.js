@@ -1,11 +1,10 @@
-'use strict';
+import { App } from './app.js';
+import { State } from './state.js';
+import { Render } from './render.js';
+import { initZoomPan } from './zoom.js';
 
-/* ============================================================
-   MAIN — ENTRY POINT
-   Runs once the DOM is fully parsed.  Wires up global event
-   listeners and kicks off the app.  All one-time setup that
-   does not belong to a specific module lives here.
-   ============================================================ */
+// Bridge for remaining inline onclicks if any (gradual migration)
+window.App = App;
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -13,22 +12,30 @@ document.addEventListener('DOMContentLoaded', () => {
   App.loadSaved();
 
   /* ---- Touch zoom/pan ---- */
-  initZoomPan();
+  initZoomPan(Render);
+
+  /* ---- Event Delegation for Main Menu ---- */
+  // (We'll keep some onclicks for now for simplicity, but let's shift name inputs to listeners)
 
   /* ---- Name input fields ---- */
 
   // Clear any browser-autofilled values on load
-  document.getElementById('name-x').value = '';
-  document.getElementById('name-o').value = '';
+  const nameX = document.getElementById('name-x');
+  const nameO = document.getElementById('name-o');
 
-  // Tab through name inputs with Enter; submit with Enter on the last field
-  document.getElementById('name-x').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('name-o').focus();
-  });
+  if (nameX) {
+    nameX.value = '';
+    nameX.addEventListener('keydown', e => {
+      if (e.key === 'Enter') nameO.focus();
+    });
+  }
 
-  document.getElementById('name-o').addEventListener('keydown', e => {
-    if (e.key === 'Enter') App.startGame();
-  });
+  if (nameO) {
+    nameO.value = '';
+    nameO.addEventListener('keydown', e => {
+      if (e.key === 'Enter') App.startGame();
+    });
+  }
 
   /* ---- Keyboard shortcuts (desktop) ---- */
   document.addEventListener('keydown', e => {

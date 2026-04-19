@@ -24,7 +24,7 @@ const CONFETTI_LIFETIME_MS = 4000;
  *
  * @param {'X'|'O'} player - Winning player; determines colour palette.
  */
-function launchConfetti(player) {
+export function launchConfetti(player) {
   const container = document.getElementById('confetti-container');
   container.innerHTML = '';
 
