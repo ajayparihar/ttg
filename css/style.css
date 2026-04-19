@@ -563,6 +563,11 @@ body {
   box-shadow: 0 0 20px var(--color-o-glow), var(--shadow);
 }
 
+/* Disable interaction during AI thinking / Opponent turn */
+.game-grid.waiting {
+  pointer-events: none;
+}
+
 /* Cell */
 .cell {
   display: flex;
@@ -614,6 +619,10 @@ body {
   width: 100%;
   height: 100%;
   position: absolute;
+}
+
+/* Pop animation for when a mark is actually placed */
+.cell .mark-svg:not(.ghost) {
   animation: markAppear 0.3s ease-out;
 }
 

@@ -149,8 +149,12 @@ export const Render = {
     const gridEl  = document.getElementById('game-grid');
     const turnInd = document.getElementById('turn-indicator');
     const cls     = State.currentPlayer === 'X' ? 'turn-x' : 'turn-o';
+    
+    // Grid is "waiting" if we are processing a move OR if it's the AI's turn
+    const isAiTurn = State.mode === 'single' && State.currentPlayer === 'O';
+    const isWaiting = isAiTurn || State.isProcessing;
 
-    gridEl.className  = `game-grid ${cls}`;
+    gridEl.className  = `game-grid ${cls} ${isWaiting ? 'waiting' : ''}`;
     turnInd.className = `turn-indicator ${cls}`;
   },
 
@@ -175,7 +179,13 @@ export const Render = {
    * In single-player mode, we hide the ghost during the AI's turn.
    */
   getGhostHtml() {
+    // Hide ghost during move processing or AI turn
+    if (State.isProcessing) return '';
     if (State.mode === 'single' && State.currentPlayer === 'O') return '';
+    
+    // Hide ghost if game is no longer active
+    if (!State.gameActive) return '';
+    
     return State.currentPlayer === 'X' ? makeGhostX() : makeGhostO();
   },
 

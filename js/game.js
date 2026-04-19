@@ -29,11 +29,14 @@ export function handleCellClick(e) {
 
   if (!State.gameActive)       return; // game not running
   if (State.paused)            return; // pause modal open
+  if (State.isProcessing)      return; // already handling a move
   if (State.grid[r][c])        return; // cell already occupied
 
   // Ignore human clicks during AI's turn
   if (State.mode === 'single' && State.currentPlayer === 'O') return;
 
+  State.isProcessing = true;
+  Render.updateTurnIndicator(); // Hide ghosts immediately
   makeMove(r, c);
 }
 
@@ -52,6 +55,8 @@ setCellClickHandler(handleCellClick);
  */
 export function makeMove(r, c, isAI = false) {
   if (!State.gameActive || State.grid[r][c]) return;
+
+  State.isProcessing = true;
 
   // Save undo snapshot before every human move
   if (!isAI) {
@@ -165,6 +170,7 @@ function _processMoveOnLargeGrid(r, c, player) {
  */
 export function switchTurn() {
   State.currentPlayer = State.currentPlayer === 'X' ? 'O' : 'X';
+  State.isProcessing = false; // Turn is now open for input
   Render.updateTurnIndicator();
 
   if (State.mode === 'single' && State.currentPlayer === 'O' && State.gameActive) {
@@ -209,10 +215,12 @@ export function expandGrid() {
 
   Render.animateGridExpand();
   App.showToast(`Board grows to ${State.gridSize}×${State.gridSize}!`);
+  State.isProcessing = true;
 
   // Short delay so the expand animation finishes before the DOM rebuild
   setTimeout(() => {
     Render.buildGrid(State.gridSize, oldSize);
+    State.isProcessing = false;
     switchTurn();
   }, 300);
 }
@@ -228,6 +236,7 @@ export function expandGrid() {
  */
 export function endGame(winner, reason) {
   State.gameActive = false;
+  State.isProcessing = false;
   clearTimers();
 
   _renderGameOverScreen(winner, reason);

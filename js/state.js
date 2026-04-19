@@ -107,6 +107,9 @@ export const State = {
   /** Raw Y coordinate where the pan gesture started. */
   panStartY: 0,
 
+  /** True while a move or animation is being processed (interlocks input). */
+  isProcessing: false,
+
   /** True while the pause modal is open. */
   paused: false,
 };
