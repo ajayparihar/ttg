@@ -28,6 +28,7 @@ import { clearTimers, triggerAI, endGame } from './game.js';
 import { clamp } from './utils.js';
 import { clampPan } from './zoom.js';
 import { Multiplayer } from './multiplayer.js';
+import { Tutorial } from './tutorial.js';
 
 export const App = {
 
@@ -35,7 +36,7 @@ export const App = {
    * ID of the currently visible screen (without the `-screen` suffix).
    * @type {string}
    */
-  currentScreen: 'menu',
+  currentScreen: 'login',
 
   /**
    * Duration (in seconds) chosen on the menu but not yet committed
@@ -80,6 +81,26 @@ export const App = {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(`${id}-screen`).classList.add('active');
     this.currentScreen = id;
+
+    // Handle offline-mode UI restrictions on the menu
+    if (id === 'menu') {
+      const multiBtn = document.querySelector('[data-i18n="play_friend"]');
+      if (multiBtn) {
+        if (State.loginSkipped) {
+          multiBtn.classList.add('btn-disabled');
+          multiBtn.title = "Login with Google to play online.";
+          // Instead of just toast, now trigger the LOGIN popup!
+          multiBtn.onclick = (e) => {
+            e.stopPropagation();
+            Multiplayer.loginWithGoogle();
+          };
+        } else {
+          multiBtn.classList.remove('btn-disabled');
+          multiBtn.title = "";
+          multiBtn.onclick = () => { this.setupModeDefaults('dual'); this.showScreen('multiplayer-lobby'); };
+        }
+      }
+    }
   },
 
   /**
@@ -214,7 +235,12 @@ export const App = {
     undoBtn.title = 'Undo last move (1 use)';
     undoBtn.style.visibility = State.isMultiplayer ? 'hidden' : 'visible';
 
-    document.getElementById('ai-thinking').style.display = 'none';
+    // Show/hide multiplayer-only reactions
+    const reactContainer = document.getElementById('reaction-container');
+    if (reactContainer) {
+      reactContainer.style.display = State.isMultiplayer ? 'flex' : 'none';
+      if (State.isMultiplayer) this.updateReactionTray();
+    }
 
     this.showScreen('game');
 
@@ -411,10 +437,187 @@ export const App = {
   openSettings() {
     this._togglePanel('settings-panel', 'settings-overlay', true);
     this._updateSoundButton(); // Ensure sound button shows current state
+    this._updateStatsUI(); // Update meta-progression stats
+  },
+
+  _updateStatsUI() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('ttg_stats') || '{}');
+      const elPlayed = document.getElementById('stat-games-played');
+      const elScore = document.getElementById('stat-highest-score');
+      const elGrid = document.getElementById('stat-largest-grid');
+      
+      const played = saved.gamesPlayed || 0;
+      const hscore = saved.highestScore || 0;
+
+      if (elPlayed) elPlayed.textContent = played;
+      if (elScore) elScore.textContent = hscore;
+      if (elGrid) elGrid.textContent = saved.largestGrid ? `${saved.largestGrid}×${saved.largestGrid}` : 'N/A';
+
+      // Unlock logic
+      const btnNeon = document.getElementById('theme-neon');
+      const iconNeon = document.getElementById('theme-neon-icon');
+      if (btnNeon && played >= 5) {
+        btnNeon.classList.remove('locked');
+        btnNeon.title = "Neon";
+        iconNeon.className = "fa-solid fa-flask";
+      }
+
+      const btnSunset = document.getElementById('theme-sunset');
+      const iconSunset = document.getElementById('theme-sunset-icon');
+      if (btnSunset && hscore >= 50) {
+        btnSunset.classList.remove('locked');
+        btnSunset.title = "Sunset";
+        iconSunset.className = "fa-solid fa-sun";
+      }
+    } catch (_) {}
   },
 
   /** Slides the settings panel out. */
   closeSettings() { this._togglePanel('settings-panel', 'settings-overlay', false); },
+
+  // ─────────────────────────────────────────────────────────────────────
+  //  User Profile & Auth Flow
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Proceeds to the main menu without a Google account.
+   * Online features will be disabled.
+   */
+  skipLogin() {
+    State.loginSkipped = true;
+    Multiplayer.initId(); // Triggers anonymous login
+    this.showScreen('menu');
+  },
+
+  /** Updates the menu UI with Google profile data if logged in. */
+  updateUserUI() {
+    const container = document.getElementById('user-auth');
+    if (!container) return;
+
+    if (State.loginSkipped) {
+      container.innerHTML = `
+        <div class="user-profile guest">
+          <div class="user-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--bg-accent);">
+            <i class="fa-solid fa-user-secret"></i>
+          </div>
+          <div class="user-info">
+            <span class="user-name">Offline Guest</span>
+            <span class="user-status offline">Online Disabled</span>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    if (!State.userProfile) return;
+
+    container.innerHTML = `
+      <div class="user-profile">
+        <img src="${State.userProfile.photo}" alt="Profile" class="user-avatar">
+        <div class="user-info">
+          <span class="user-name">${State.userProfile.name}</span>
+          <span class="user-status">Verified Gamer</span>
+        </div>
+      </div>
+    `;
+
+    // Hide login button on other screens if needed
+    const loginBtn = document.getElementById('google-login-btn');
+    if (loginBtn) loginBtn.style.display = 'none';
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  //  Emoji Customization
+  // ─────────────────────────────────────────────────────────────────────
+
+  /** Opens the emoji customization panel. */
+  openEmojiPanel() {
+    this._togglePanel('emoji-panel', 'emoji-overlay', true);
+    this.updateEmojiUI();
+  },
+
+  /** Closes the emoji panel. */
+  closeEmojiPanel() {
+    this._togglePanel('emoji-panel', 'emoji-overlay', false);
+    // Refresh the in-game tray in case they changed during a match
+    this.updateReactionTray();
+  },
+
+  /**
+   * Re-renders the active slots and storage grid in the customization panel.
+   */
+  updateEmojiUI() {
+    const slotsCont = document.getElementById('emoji-active-slots');
+    const storageCont = document.getElementById('emoji-storage-grid');
+    if (!slotsCont || !storageCont) return;
+
+    // Render 5 Slots
+    slotsCont.innerHTML = '';
+    State.activeEmojis.forEach((emoji, i) => {
+      const slot = document.createElement('div');
+      slot.className = `emoji-slot ${this._selectedEmojiSlot === i ? 'selected' : ''}`;
+      slot.textContent = emoji;
+      slot.onclick = () => {
+        this._selectedEmojiSlot = i;
+        this.updateEmojiUI();
+      };
+      slotsCont.appendChild(slot);
+    });
+
+    // Render Storage
+    storageCont.innerHTML = '';
+    State.emojiPack.forEach(emoji => {
+      const btn = document.createElement('button');
+      btn.className = 'storage-item';
+      btn.textContent = emoji;
+      // Add 'equipped' class if this emoji is in activeEmojis
+      if (State.activeEmojis.includes(emoji)) btn.classList.add('equipped');
+      
+      btn.onclick = () => this.equipEmoji(emoji);
+      storageCont.appendChild(btn);
+    });
+  },
+
+  /**
+   * Places the chosen emoji into the currently selected customization slot.
+   * @param {string} emoji - The emoji character to equip.
+   */
+  equipEmoji(emoji) {
+    if (this._selectedEmojiSlot === undefined) {
+      this.showToast("Select a slot first!");
+      return;
+    }
+    
+    // Replace emoji in the active array
+    State.activeEmojis[this._selectedEmojiSlot] = emoji;
+    
+    // Save to localStorage
+    try {
+      localStorage.setItem('ttg_emojis', JSON.stringify(State.activeEmojis));
+    } catch (_) {}
+
+    this.updateEmojiUI();
+    this.showToast("Emoji Equipped!");
+  },
+
+  /**
+   * Rebuilds the in-game reaction tray using the player's 5 active emojis.
+   */
+  updateReactionTray() {
+    const tray = document.getElementById('reaction-tray');
+    if (!tray) return;
+
+    tray.innerHTML = '';
+    State.activeEmojis.forEach(emoji => {
+      const btn = document.createElement('button');
+      btn.textContent = emoji;
+      btn.onclick = () => Multiplayer.sendReaction(emoji);
+      tray.appendChild(btn);
+    });
+  },
+
+  _selectedEmojiSlot: 0,
 
   // ─────────────────────────────────────────────────────────────────────
   //  How-to-play panel
@@ -426,22 +629,38 @@ export const App = {
   /** Closes the help panel. */
   closeHelp() { this._togglePanel('help-panel', 'help-overlay', false); },
 
+  /** Starts interactive tutorial */
+  startTutorial() {
+    this.closeHelp();
+    this.setupModeDefaults('dual');
+    State.names = { X: 'You', O: 'Tutor' };
+    State.mode = 'dual';
+    State.duration = 0;
+    this.initGame();
+    setTimeout(() => {
+      Tutorial.start();
+    }, 500);
+  },
+
   // ─────────────────────────────────────────────────────────────────────
   //  Theming
   // ─────────────────────────────────────────────────────────────────────
 
   /**
-   * Applies a colour theme to the document root and persists the choice
-   * to localStorage.
-   *
-   * Themes are activated by setting `data-theme` on `<html>`.  CSS
-   * custom properties defined under `[data-theme="…"]` selectors
-   * override the defaults.
-   *
-   * @param {string} name - Theme key (e.g. `'ocean'`, `'neon'`).
-   *   `'default'` removes the `data-theme` attribute.
+   * Applies a colour theme to the document root and persists the choice.
+   * Checks locks first.
+   * @param {string} name - Theme key.
    */
   setTheme(name) {
+    if (name === 'neon') {
+      const saved = JSON.parse(localStorage.getItem('ttg_stats') || '{}');
+      if ((saved.gamesPlayed || 0) < 5) return this.showToast('Play 5 games to unlock!');
+    }
+    if (name === 'sunset') {
+      const saved = JSON.parse(localStorage.getItem('ttg_stats') || '{}');
+      if ((saved.highestScore || 0) < 50) return this.showToast('Score 50+ points to unlock!');
+    }
+
     document.documentElement.dataset.theme = name === 'default' ? '' : name;
 
     // Highlight the active theme button
@@ -507,7 +726,12 @@ export const App = {
     toast.className   = 'toast';
     toast.textContent = msg;
     container.appendChild(toast);
-    setTimeout(() => toast.remove(), dur);
+    
+    // Smooth fade out
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 500);
+    }, dur);
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -667,6 +891,12 @@ export const App = {
         }
         // If prefers dark or no preference, default dark theme is already set
       }
+
+      // First visit tutorial check
+      const tutorialDone = localStorage.getItem('ttg_tutorial_done');
+      if (!tutorialDone) {
+        // Quietly wait for user to find it themselves or use a subtle hint later
+      }
     } catch (_) {}
 
     try {
@@ -676,5 +906,22 @@ export const App = {
       }
       this._updateSoundButton();
     } catch (_) {}
+
+    try {
+      const savedEmojis = localStorage.getItem('ttg_emojis');
+      if (savedEmojis) {
+        State.activeEmojis = JSON.parse(savedEmojis);
+      }
+      this.updateReactionTray();
+    } catch (_) {}
+
+    // Init lobby clear button listener
+    const joinInput = document.getElementById('join-code-input');
+    const clearBtn = document.getElementById('clear-join-input');
+    if (joinInput && clearBtn) {
+      joinInput.addEventListener('input', () => {
+        clearBtn.style.display = joinInput.value ? 'block' : 'none';
+      });
+    }
   },
 };

@@ -20,6 +20,7 @@ import { Render } from './render.js';
 import { initZoomPan } from './zoom.js';
 import { Multiplayer } from './multiplayer.js';
 import { makeMove } from './game.js';
+import { i18n } from './i18n.js';
 
 // ---------------------------------------------------------------------------
 // Bridge for remaining inline `onclick` handlers in the HTML.

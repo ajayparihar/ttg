@@ -1,0 +1,16 @@
+{
+  "name": "Tic Tac Grow",
+  "short_name": "TTG",
+  "description": "The classic, with an infinite twist.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#ff3b5c",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

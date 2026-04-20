@@ -283,18 +283,37 @@ export function scoreMoveOnGrid(grid, r, c, player, scoredChains) {
     // Skip if this exact chain length was already fully awarded
     if (scoredChains.has(id)) continue;
 
-    // Find the longest previously-scored sub-chain in this direction
-    // so we award only the incremental delta, not the full value
-    let prevScored = 0;
-    for (let prevLen = len - 1; prevLen >= 3; prevLen--) {
-      const prevId = chainId(start.r, start.c, dr, dc, prevLen);
-      if (scoredChains.has(prevId)) {
-        prevScored = chainScore(prevLen);
-        break;
+    // --- Merging & Incremental Growth logic ---
+    // Find all maximal previously-scored sub-chains contained within this new chain.
+    // We deduct their scores to award only the "new" points.
+    
+    const preScoredIds = [];
+    for (let slen = 3; slen < len; slen++) {
+      for (let offset = 0; offset <= (len - slen); offset++) {
+        const sr = start.r + dr * offset;
+        const sc = start.c + dc * offset;
+        const sid = chainId(sr, sc, dr, dc, slen);
+        if (scoredChains.has(sid)) {
+          preScoredIds.push({ r: sr, c: sc, len: slen, score: chainScore(slen) });
+        }
       }
     }
 
-    const newPts = chainScore(len) - prevScored;
+    // Filter to find maximal pre-scored chains (those not contained in another pre-scored chain)
+    const maximalPreScored = preScoredIds.filter(s1 => {
+      return !preScoredIds.some(s2 => {
+        if (s1 === s2) return false;
+        // Check if s1 is a sub-segment of s2
+        // Since they have the same direction and are on the same line,
+        // we just check if s1's range is within s2's range.
+        const s1Offset = Math.abs(s1.r - s2.r) || Math.abs(s1.c - s2.c);
+        return s1Offset >= 0 && (s1Offset + s1.len <= s2.len);
+      });
+    });
+
+    const prevScoredSum = maximalPreScored.reduce((sum, s) => sum + s.score, 0);
+    const newPts = chainScore(len) - prevScoredSum;
+
     if (newPts > 0) {
       totalPts += newPts;
       scoredChains.add(id);

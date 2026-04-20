@@ -159,6 +159,12 @@ export const State = {
    */
   aiTimeout: null,
 
+  /**
+   * `true` when the AI is currently "thinking" (during its delay timer).
+   * Used to show an animated status in the turn indicator.
+   */
+  isThinking: false,
+
   // ═══════════════════════════════════════════════════════════════════════
   //  6. ZOOM / PAN VIEWPORT STATE
   // ═══════════════════════════════════════════════════════════════════════
@@ -247,4 +253,41 @@ export const State = {
    * Null when no moves have been made yet.
    */
   lastMove: null,
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  10. AUTH & CUSTOMIZATION
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Data retrieved from Google Auth.
+   * @type {{ name: string, photo: string, email: string }|null}
+   */
+  userProfile: null,
+
+  /**
+   * The set of 5 emojis currently equipped in the reaction tray.
+   * @type {string[]}
+   */
+  activeEmojis: ['😂', '😲', '🔥', '👏', '🤔'],
+
+  /**
+   * Timestamp (ms) of the last sent reaction.
+   * Used for spam prevention.
+   */
+  lastReactionTime: 0,
+
+  /**
+   * Full collection of available emojis that can be equipped.
+   * @type {string[]}
+   */
+  emojiPack: [
+    '😂', '😲', '🔥', '👏', '🤔', '😭', '😎', '💀', '🤡', '💖',
+    '🎉', '🚀', '👀', '💯', '✨', '👑', '🥳', '😡', '😱', '👍'
+  ],
+
+  /**
+   * Whether the user chose to skip Google login.
+   * Disables online play features.
+   */
+  loginSkipped: false,
 };

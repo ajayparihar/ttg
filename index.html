@@ -10,6 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
 
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -24,26 +27,68 @@
 </head>
 <body>
 
+<div class="bg-particles" id="bg-particles" aria-hidden="true">
+  <div class="particle p1"></div>
+  <div class="particle p2"></div>
+  <div class="particle p3"></div>
+</div>
+
+<!-- ============================================================
+     SCREEN: LOGIN / WELCOME
+     ============================================================ -->
+<div id="login-screen" class="screen active">
+  <div class="login-hero">
+
+    <h1 class="game-title">TIC TAC GROW</h1>
+    <p class="game-subtitle">Level up your game. Sync your progress.</p>
+  </div>
+
+  <div class="login-actions">
+    <button class="btn btn-login-large" onclick="Multiplayer.loginWithGoogle()">
+      <i class="fa-brands fa-google"></i> Sign in with Google
+    </button>
+    
+    <div class="login-divider"><span>OR</span></div>
+    
+    <button class="btn btn-secondary btn-ghost" onclick="App.skipLogin()">
+      Play Offline (No Rankings)
+    </button>
+  </div>
+
+  <p class="login-note">Online play requires a Google account for security.</p>
+</div>
+
 <!-- ============================================================
      SCREEN: MAIN MENU
      ============================================================ -->
-<div id="menu-screen" class="screen active">
-  <h1 class="game-title">TIC TAC GROW</h1>
-  <p class="game-subtitle">The classic, with an infinite twist.</p>
+<div id="menu-screen" class="screen">
+  <h1 class="game-title" data-i18n="title">TIC TAC GROW</h1>
+  <p class="game-subtitle" data-i18n="subtitle">The classic, with an infinite twist.</p>
+
+  <div id="user-auth" class="user-auth">
+    <!-- Populated by App.updateUserUI() -->
+  </div>
 
   <div class="menu-buttons">
-    <button class="btn btn-primary" onclick="App.goToMode('single')">
-      <i class="fa-solid fa-user"></i> Single Player
+    <button class="btn btn-primary" onclick="App.goToMode('single')" data-i18n="single_player">
+      <i class="fa-solid fa-user" aria-hidden="true"></i> Single Player
     </button>
-    <button class="btn btn-primary" onclick="App.goToMode('dual')">
-      <i class="fa-solid fa-user-group"></i> Dual Player</button>
-    <button class="btn btn-secondary" onclick="App.setupModeDefaults('dual'); App.showScreen('multiplayer-lobby')">
-      <i class="fa-solid fa-globe"></i> Play with Friend</button>
+    <button class="btn btn-primary" onclick="App.goToMode('dual')" data-i18n="dual_player">
+      <i class="fa-solid fa-user-group" aria-hidden="true"></i> Dual Player</button>
+    <button class="btn btn-secondary" onclick="App.setupModeDefaults('dual'); App.showScreen('multiplayer-lobby')" data-i18n="play_friend">
+      <i class="fa-solid fa-ring" aria-hidden="true"></i> Join a Ring</button>
   </div>
 
   <div class="menu-footer" style="display:flex;gap:16px;">
-    <button class="btn btn-icon" onclick="App.openSettings()" title="Settings"><i class="fa-solid fa-sliders"></i></button>
-    <button class="btn btn-icon" onclick="App.showHowToPlay()" title="Tutorial"><i class="fa-solid fa-graduation-cap"></i></button>
+      <button class="btn btn-icon settings-btn" onclick="App.openSettings()" aria-label="Open Settings">
+        <i class="fa-solid fa-gear" aria-hidden="true"></i>
+      </button>
+      <button class="btn btn-icon emoji-btn" onclick="App.openEmojiPanel()" aria-label="Customize Emojis">
+        <i class="fa-regular fa-face-laugh-wink" aria-hidden="true"></i>
+      </button>
+      <button class="btn btn-icon help-btn" onclick="App.showHowToPlay()" aria-label="How to Play">
+        <i class="fa-solid fa-question" aria-hidden="true"></i>
+      </button>
   </div>
 </div>
 
@@ -52,30 +97,73 @@
      ============================================================ -->
 <div id="multiplayer-lobby-screen" class="screen">
   <div class="screen-header">
-    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')">←</button>
+    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')" aria-label="Back to Menu">←</button>
     <h2 class="screen-title">Play with Friend</h2>
   </div>
 
   <div class="lobby-options">
     <div class="lobby-card">
-      <h3>Host a Game</h3>
-      <p>Create a room and share the link or code.</p>
+      <h3>Host a Ring</h3>
+      <p>Create a Ring and share the ID.</p>
+      <button class="btn btn-icon back-lobby-btn" onclick="Multiplayer.leaveRoom()" aria-label="Leave multiplayer room">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
       <button class="btn btn-primary" onclick="Multiplayer.createRoom()">
-        <i class="fa-solid fa-plus"></i> Create Private Room
+        <i class="fa-solid fa-plus" aria-hidden="true"></i> Create Private Room
       </button>
     </div>
 
     <div class="lobby-divider"><span>OR</span></div>
 
     <div class="lobby-card">
-      <h3>Join a Game</h3>
-      <p>Enter a 4-character room code.</p>
+      <h3>Join a Ring</h3>
+      <p>Enter a 4-character Ring ID.</p>
       <div class="join-input-group">
-        <input type="text" id="join-code-input" class="room-code-input" 
-               placeholder="CODE" maxlength="4" autocomplete="off">
+        <div class="input-with-clear">
+          <input type="text" id="join-code-input" class="room-code-input" 
+                 placeholder="ID" maxlength="4" autocomplete="off">
+          <button class="clear-input-btn" id="clear-join-input" onclick="document.getElementById('join-code-input').value = ''" style="display:none;">
+            <i class="fa-solid fa-times"></i>
+          </button>
+        </div>
         <button class="btn btn-primary" onclick="Multiplayer.joinRoom()">Join</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCREEN: MODE / DURATION SELECTION
+     ============================================================ -->
+<div id="mode-screen" class="screen">
+  <div class="screen-header">
+    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')" aria-label="Back to Menu">←</button>
+    <h2 class="screen-title" id="mode-screen-title">Select Duration</h2>
+  </div>
+
+  <p class="section-subtitle">How long should the match last?</p>
+
+  <div class="duration-grid">
+    <button class="btn duration-btn" data-dur="60" onclick="App.selectDuration(60)">
+      <span class="dur-label">1</span>
+      <span class="dur-sub">Minute</span>
+    </button>
+    <button class="btn duration-btn" data-dur="180" onclick="App.selectDuration(180)">
+      <span class="dur-label">3</span>
+      <span class="dur-sub">Minutes</span>
+    </button>
+    <button class="btn duration-btn" data-dur="300" onclick="App.selectDuration(300)">
+      <span class="dur-label">5</span>
+      <span class="dur-sub">Minutes</span>
+    </button>
+    <button class="btn duration-btn" data-dur="600" onclick="App.selectDuration(600)">
+      <span class="dur-label">10</span>
+      <span class="dur-sub">Minutes</span>
+    </button>
+    <button class="btn duration-btn" data-dur="0" onclick="App.selectDuration(0)">
+      <span class="dur-label">∞</span>
+      <span class="dur-sub">Unlimited</span>
+    </button>
   </div>
 </div>
 
@@ -84,27 +172,24 @@
      ============================================================ -->
 <div id="multiplayer-waiting-screen" class="screen">
   <div class="screen-header">
-    <button class="btn btn-icon screen-back-btn" onclick="Multiplayer.leaveRoom()">←</button>
+    <button class="btn btn-icon screen-back-btn" onclick="Multiplayer.leaveRoom()" aria-label="Leave Ring">←</button>
     <h2 class="screen-title">Waiting for Friend</h2>
   </div>
 
   <div class="waiting-container">
     <div class="room-info">
-      <span class="room-label">Room Code</span>
+      <span class="room-label">Ring ID</span>
       <div class="room-code-display" id="room-code-display">
         <span id="room-code-text">----</span>
-        <div class="copy-mini-btn" onclick="Multiplayer.copyRoomCode()" title="Copy Code">
-          <i class="fa-solid fa-copy"></i>
+        <div class="copy-mini-btn" onclick="Multiplayer.copyRoomCode()" title="Copy ID" aria-label="Copy Ring ID">
+          <i class="fa-solid fa-copy" aria-hidden="true"></i>
         </div>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="Multiplayer.copyInviteLink()">
-        <i class="fa-solid fa-copy"></i> Copy Invite Link
-      </button>
     </div>
 
     <div class="waiting-status">
       <div class="pulse-ring"></div>
-      <p id="waiting-status-text">Your friend can join using the code above.</p>
+      <p id="waiting-status-text">Share the Ring ID above with your friend.</p>
     </div>
 
     <div class="player-slots">
@@ -129,7 +214,7 @@
      ============================================================ -->
 <div id="name-screen" class="screen">
   <div class="screen-header">
-    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')">←</button>
+    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')" aria-label="Back to Menu">←</button>
     <h2 class="screen-title">Player Names</h2>
   </div>
 
@@ -147,7 +232,7 @@
   </div>
 
   <button class="btn btn-primary" onclick="App.startGame()" style="max-width:340px;width:100%;">
-    <i class="fa-solid fa-rocket"></i> Start Game
+    <i class="fa-solid fa-rocket" aria-hidden="true"></i> Start Game
   </button>
 </div>
 
@@ -159,7 +244,7 @@
   <!-- HUD Top -->
   <div class="game-hud">
     <div class="hud-left">
-      <button class="btn btn-icon" onclick="App.pauseConfirm()" title="Settings"><i class="fa-solid fa-bars"></i></button>
+      <button class="btn btn-icon" onclick="App.pauseConfirm()" title="Settings" aria-label="Pause Game"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
     </div>
 
     <div class="hud-center">
@@ -194,6 +279,9 @@
     <!-- Current player pill -->
     <div class="turn-indicator turn-x" id="turn-indicator">Xi's Turn</div>
 
+    <!-- Tutorial hint overlay -->
+    <div id="tutorial-hint" class="tutorial-hint" style="display:none;"></div>
+
     <!-- Grid wrapper (handles zoom/pan) -->
     <div class="grid-wrapper" id="grid-wrapper">
       <div class="grid-zoom-container" id="grid-zoom-container">
@@ -207,23 +295,34 @@
   <div class="game-controls">
     <div class="controls-left">
       <button class="btn btn-icon undo-btn" id="undo-btn"
-              onclick="App.undo()" title="Undo last move (1 use)">
-        <i class="fa-solid fa-rotate-left"></i>
+              onclick="App.undo()" title="Undo last move (1 use)" aria-label="Undo Move">
+        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
       </button>
-      <!-- AI thinking indicator — shown only during AI's turn -->
-      <div class="ai-thinking" id="ai-thinking" style="display:none;">
-        AI <span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>
+      
+      <!-- Multiplayer Reaction Button -->
+      <div id="reaction-container" class="reaction-container" style="display:none;">
+        <button class="btn btn-icon" id="react-btn" onclick="Multiplayer.toggleReactionTray()" title="Send Reaction" aria-label="Send Reaction">
+          <i class="fa-regular fa-face-smile" aria-hidden="true"></i>
+        </button>
+        <div class="reaction-tray" id="reaction-tray">
+          <!-- Populated dynamically by App.updateReactionTray() -->
+        </div>
       </div>
     </div>
 
     <div class="controls-center" id="controls-hint"></div>
 
     <div class="controls-right">
-      <button class="btn btn-icon" onclick="App.zoom(-1)" title="Zoom out">−</button>
-      <div class="zoom-display" id="zoom-display">100%</div>
-      <button class="btn btn-icon" onclick="App.zoom(1)"  title="Zoom in">+</button>
-      <button class="btn btn-icon" id="reset-zoom-btn" onclick="App.resetZoom()" title="Reset Zoom" style="display:none;">
-        <i class="fa-solid fa-expand"></i>
+      <button class="btn btn-icon zoom-btn" id="zoom-out-btn" aria-label="Zoom Out">
+        <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+      </button>
+      <span class="zoom-val" id="zoom-display">100%</span>
+      <button class="btn btn-icon zoom-btn" id="zoom-in-btn" aria-label="Zoom In">
+        <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+      </button>
+      <button class="btn btn-icon reset-zoom-btn" id="reset-zoom-btn"
+              onclick="App.resetZoom()" style="display:none;" aria-label="Reset Zoom and Pan">
+        <i class="fa-solid fa-arrows-to-dot" aria-hidden="true"></i>
       </button>
     </div>
   </div>
@@ -291,14 +390,22 @@
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF5722,#4CAF50)"></div>
         <i class="fa-solid fa-tree"></i>
       </button>
-      <button class="btn theme-btn" data-theme="neon" onclick="App.setTheme('neon')">
+      <button class="btn theme-btn locked" data-theme="neon" id="theme-neon" onclick="App.setTheme('neon')" title="Play 5 games to unlock">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF00FF,#00FFFF)"></div>
-        <i class="fa-solid fa-flask"></i>
+        <i class="fa-solid fa-lock" id="theme-neon-icon"></i>
       </button>
-      <button class="btn theme-btn" data-theme="sunset" onclick="App.setTheme('sunset')">
+      <button class="btn theme-btn locked" data-theme="sunset" id="theme-sunset" onclick="App.setTheme('sunset')" title="Score 50+ points to unlock">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF4500,#FFC200)"></div>
-        <i class="fa-solid fa-sun"></i>
+        <i class="fa-solid fa-lock" id="theme-sunset-icon"></i>
       </button>
+    </div>
+  </div>
+
+  <div>
+    <div class="settings-section-title">Language</div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <button class="btn btn-secondary btn-sm" onclick="import('./js/i18n.js').then(m => m.i18n.setLang('en'))">EN</button>
+      <button class="btn btn-secondary btn-sm" onclick="import('./js/i18n.js').then(m => m.i18n.setLang('es'))">ES</button>
     </div>
   </div>
 
@@ -308,6 +415,15 @@
       <i class="fa-solid fa-volume-high" id="sound-icon"></i>
       <span id="sound-label">Sound On</span>
     </button>
+  </div>
+
+  <div>
+    <div class="settings-section-title">Career Stats</div>
+    <div style="font-size:14px; color:var(--fg-secondary); display:flex; flex-direction:column; gap:8px; background:var(--glass); padding:10px; border-radius:8px;">
+      <div style="display:flex; justify-content:space-between;"><span>Games Played:</span> <strong style="color:var(--fg-primary)" id="stat-games-played">0</strong></div>
+      <div style="display:flex; justify-content:space-between;"><span>Highest Score:</span> <strong style="color:var(--fg-primary)" id="stat-highest-score">0</strong></div>
+      <div style="display:flex; justify-content:space-between;"><span>Largest Grid:</span> <strong style="color:var(--fg-primary)" id="stat-largest-grid">N/A</strong></div>
+    </div>
   </div>
 
   <div>
@@ -363,7 +479,40 @@
     </div>
   </div>
 
-  <button class="btn" onclick="App.closeHelp()" style="margin-top:auto;"><i class="fa-solid fa-times"></i> Close</button>
+  <button class="btn btn-primary" onclick="App.startTutorial()" style="margin-top:auto; background: var(--accent); border: none; color: black;">
+    <i class="fa-solid fa-graduation-cap"></i> Start Interactive Tutorial
+  </button>
+  <button class="btn" onclick="App.closeHelp()" style="margin-top:8px;"><i class="fa-solid fa-times"></i> Close</button>
+</div>
+
+<!-- ============================================================
+     EMOJI CUSTOMIZATION PANEL
+     ============================================================ -->
+<div class="settings-overlay" id="emoji-overlay" onclick="App.closeEmojiPanel()"></div>
+<div class="settings-panel emoji-panel" id="emoji-panel">
+  <div class="settings-header">
+    <div class="settings-title">Customize Reactions</div>
+    <p class="section-subtitle">Pick 5 emojis for your battle tray</p>
+  </div>
+
+  <div class="emoji-active-slots" id="emoji-active-slots">
+    <!-- 5 Slots populated by App.updateEmojiUI() -->
+    <div class="emoji-slot" data-slot="0"></div>
+    <div class="emoji-slot" data-slot="1"></div>
+    <div class="emoji-slot" data-slot="2"></div>
+    <div class="emoji-slot" data-slot="3"></div>
+    <div class="emoji-slot" data-slot="4"></div>
+  </div>
+
+  <div style="font-size:12px; color:var(--fg-secondary); text-align:center; margin: 10px 0;">Tap a slot above, then pick an emoji below</div>
+
+  <div class="emoji-storage-grid" id="emoji-storage-grid">
+    <!-- All emojis from State.emojiPack populated by App.updateEmojiUI() -->
+  </div>
+
+  <button class="btn btn-primary" onclick="App.closeEmojiPanel()" style="margin-top:auto;">
+    <i class="fa-solid fa-check"></i> Done
+  </button>
 </div>
 
 <!-- ============================================================
@@ -393,6 +542,14 @@
 
 <!-- Main Entry Point (as ES Module) -->
 <script type="module" src="js/main.js"></script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then((reg) => console.log('SW Registered'))
+      .catch((err) => console.log('SW Error', err));
+  }
+</script>
 
 </body>
 </html>

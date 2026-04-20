@@ -34,6 +34,8 @@ import { App } from './app.js';
 import { makeCrownSvg } from './svg.js';
 import { Multiplayer } from './multiplayer.js';
 import { hapticFeedback } from './utils.js';
+import { Tutorial } from './tutorial.js';
+import { i18n } from './i18n.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Input handling
@@ -69,6 +71,9 @@ export function handleCellClick(e) {
 
   // Block input when it's the remote opponent's turn
   if (State.isMultiplayer && State.currentPlayer !== State.playerRole) return;
+
+  // Check if tutorial allows this move
+  if (!Tutorial.handleMove(r, c)) return;
 
   // All guards passed — lock input and execute the move
   State.isProcessing = true;
@@ -134,6 +139,11 @@ export function makeMove(r, c, isAI = false) {
     _processMoveOn3x3();
   } else {
     _processMoveOnLargeGrid(r, c, player);
+  }
+
+  // Synchronise move to Firebase (granular update)
+  if (State.isMultiplayer) {
+    Multiplayer.pushMove(r, c, player);
   }
 }
 
@@ -277,9 +287,9 @@ export function switchTurn() {
   State.isProcessing  = false;   // Turn is now open for input
   Render.updateTurnIndicator();
 
-  // Synchronise turn change to Firebase for the remote player
+  // Synchronise turn change to Firebase (granular update)
   if (State.isMultiplayer) {
-    Multiplayer.pushState();
+    Multiplayer.pushStateUpdate({ currentPlayer: State.currentPlayer });
   }
 
   // Trigger the AI if it's now the computer's turn
@@ -296,13 +306,16 @@ export function switchTurn() {
  * human player a moment to observe the board after their own move.
  */
 export function triggerAI() {
-  document.getElementById('ai-thinking').style.display = 'flex';
+  State.isThinking = true;
+  Render.updateTurnIndicator();
 
   // Randomised thinking delay for a more natural feel
   const delay = 500 + Math.random() * 2000;
 
   State.aiTimeout = setTimeout(() => {
-    document.getElementById('ai-thinking').style.display = 'none';
+    State.isThinking = false;
+    Render.updateTurnIndicator();
+
     if (!State.gameActive) return;   // Game may have ended while "thinking"
 
     // AI receives a **copy** of the grid so look-ahead mutations
@@ -337,14 +350,28 @@ export function expandGrid() {
 
   Render.animateGridExpand();
   App.showToast(`Board grows to ${State.gridSize}×${State.gridSize}!`);
+  hapticFeedback(30);
+
+  if (Tutorial.active) Tutorial.nextStep();
 
   // Lock input during the expansion animation
   State.isProcessing = true;
 
   // Short delay lets the CSS animation finish before the DOM rebuild
   setTimeout(() => {
+    App.showToast(i18n.t('board_grows'));
     Render.buildGrid(State.gridSize, oldSize);
     State.isProcessing = false;
+    
+    // Sync expanded grid and new turn to Firebase
+    if (State.isMultiplayer) {
+      Multiplayer.pushStateUpdate({
+        grid: State.grid,
+        gridSize: State.gridSize,
+        currentPlayer: State.currentPlayer === 'X' ? 'O' : 'X' // Prepare for switchTurn
+      });
+    }
+
     switchTurn();
   }, 300);
 }
@@ -502,12 +529,21 @@ function _renderGameOverScreen(winner, reason) {
  */
 function _persistStats() {
   try {
-    const saved          = JSON.parse(localStorage.getItem('ttg_stats') || '{}');
-    saved.gamesPlayed    = (saved.gamesPlayed   || 0) + 1;
-    saved.largestGrid    = Math.max(saved.largestGrid   || 3, State.gridSize);
-    saved.highestScore   = Math.max(saved.highestScore  || 0, Math.max(State.scores.X, State.scores.O));
-    localStorage.setItem('ttg_stats', JSON.stringify(saved));
-  } catch (_) { /* Storage unavailable — not a critical failure */ }
+    const statsJSON = localStorage.getItem('ttg_stats') || '{}';
+    const stats = JSON.parse(statsJSON);
+    
+    stats.gamesPlayed = (stats.gamesPlayed || 0) + 1;
+    if (State.scores.X > (stats.highestScore || 0)) stats.highestScore = State.scores.X;
+    if (State.scores.O > (stats.highestScore || 0)) stats.highestScore = State.scores.O;
+    if (State.gridSize > (stats.largestGrid || 0)) stats.largestGrid = State.gridSize;
+
+    localStorage.setItem('ttg_stats', JSON.stringify(stats));
+    
+    // Sync to Cloud if authenticated
+    Multiplayer.pushStat('gamesPlayed', stats.gamesPlayed);
+    Multiplayer.pushStat('highestScore', stats.highestScore);
+    Multiplayer.pushStat('largestGrid', stats.largestGrid);
+  } catch (err) {}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -558,6 +594,24 @@ function showFloatingScore(r, c, points, player) {
 
   document.getElementById('game-grid').appendChild(floatEl);
 
-  // Remove after animation completes
+  // Remove floatEl after animation completes
   setTimeout(() => floatEl.remove(), 1200);
+
+  // Sparkle particles
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'score-sparkle';
+    p.style.backgroundColor = player === 'X' ? 'var(--color-x)' : 'var(--color-o)';
+    p.style.left = `${x}px`;
+    p.style.top = `${y}px`;
+    
+    // Random trajectory
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 40;
+    p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+    p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+    
+    document.getElementById('game-grid').appendChild(p);
+    setTimeout(() => p.remove(), 800);
+  }
 }

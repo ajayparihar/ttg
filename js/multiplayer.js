@@ -31,6 +31,7 @@ import { State } from './state.js';
 import { App } from './app.js';
 import { makeMove, switchTurn, clearTimers } from './game.js';
 import { Render } from './render.js';
+import { i18n } from './i18n.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Firebase initialisation
@@ -80,10 +81,72 @@ export const Multiplayer = {
    * exists in {@link State.userId}, this is a no-op.
    */
   async initId() {
-    if (State.userId) return;
-    const user = await auth.signInAnonymously();
-    State.userId = user.user.uid;
-    console.log("Logged in as:", State.userId);
+    return new Promise((resolve) => {
+      // Listen for auth state changes
+      auth.onAuthStateChanged(async (user) => {
+        if (user) {
+          State.userId = user.uid;
+          
+          if (!user.isAnonymous) {
+            State.userProfile = {
+              name: user.displayName,
+              photo: user.photoURL,
+              email: user.email
+            };
+            App.updateUserUI();
+            
+            // Sync stats if logging in for the first time in this session
+            this.syncStatsFromLocal(user.uid);
+          }
+          
+          // If we were on login screen, move to menu
+          if (App.currentScreen === 'login') {
+            App.showScreen('menu');
+          }
+          
+          resolve(user.uid);
+        } else {
+          // No auto-anonymous anymore; user must Choose login or skip
+          resolve(null);
+        }
+      });
+    });
+  },
+
+  /**
+   * Syncs locally stored stats to the Firebase account on login.
+   * @param {string} uid - Authenticated User ID.
+   */
+  async syncStatsFromLocal(uid) {
+    try {
+      const local = localStorage.getItem('ttg_stats');
+      if (local) {
+        const stats = JSON.parse(local);
+        db.ref(`users/${uid}/stats`).update(stats);
+      }
+    } catch (e) {}
+  },
+
+  /**
+   * Saves a single stat point to account.
+   */
+  pushStat(key, val) {
+    if (!State.userId || State.loginSkipped) return;
+    db.ref(`users/${State.userId}/stats/${key}`).set(val);
+  },
+
+  /**
+   * Triggers the Google Auth popup.
+   */
+  async loginWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      await auth.signInWithPopup(provider);
+      App.showToast("Logged in with Google!");
+    } catch (err) {
+      console.error("Google login failed:", err);
+      App.showToast("Login failed.");
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -132,8 +195,8 @@ export const Multiplayer = {
     State.mode          = 'dual';
     State.duration      = App.selectedDuration;
 
-    // ── Write room to Firebase ───────────────────────────────────────
-    const roomRef = db.ref(`rooms/${code}`);
+    // ── Write Ring to Firebase ───────────────────────────────────────
+    const roomRef = db.ref(`rings/${code}`);
     roomRef.onDisconnect().update({ status: 'abandoned' });
 
     await roomRef.set({
@@ -166,7 +229,7 @@ export const Multiplayer = {
         document.getElementById('slot-guest-name').textContent = data.guestName || 'Friend';
         document.getElementById('slot-guest').classList.add('active');
         document.getElementById('start-multiplayer-btn').disabled = false;
-        App.showToast("Friend joined!");
+        App.showToast(i18n.t('play_friend')); // Reuse or add friend_joined
       }
 
       // Handle the case where the host is also listening for game start
@@ -209,7 +272,7 @@ export const Multiplayer = {
     }
 
     await this.initId();
-    const roomRef  = db.ref(`rooms/${code}`);
+    const roomRef  = db.ref(`rings/${code}`);
     const snapshot = await roomRef.once('value');
 
     // ── Room existence check ─────────────────────────────────────────
@@ -254,13 +317,11 @@ export const Multiplayer = {
     App.showScreen('multiplayer-waiting');
     document.getElementById('waiting-status-text').textContent = "Waiting for host to start...";
 
-    // ── Listen for the host to start the game (or trigger a rematch) ─
+    // ── Listen for the host to start the game ─
     roomRef.on('value', (snap) => {
       const d = snap.val();
       if (d && d.status === 'playing' && App.currentScreen !== 'game') {
-        // Only transition once the host has pushed an active gameState
         if (d.gameState && d.gameState.gameActive === true) {
-          App.showToast("Game started!");
           this._startRemoteGame(d.gameState);
         }
       }
@@ -285,7 +346,7 @@ export const Multiplayer = {
     App.initGame();
 
     // ── Sync names from Firebase (in case the guest updated theirs) ──
-    const roomRef = db.ref(`rooms/${State.roomCode}`);
+    const roomRef = db.ref(`rings/${State.roomCode}`);
     const snap    = await roomRef.once('value');
     const data    = snap.val();
 
@@ -347,12 +408,12 @@ export const Multiplayer = {
    * @private
    */
   _startSyncListeners() {
-    const roomRef = db.ref(`rooms/${State.roomCode}`);
+    const roomRef = db.ref(`rings/${State.roomCode}`);
 
     // Listen for opponent disconnection
     roomRef.child('status').on('value', (snapshot) => {
       if (snapshot.val() === 'abandoned' && State.isMultiplayer) {
-        App.showToast("Opponent left the match.");
+        App.showToast(i18n.t('match_abandoned'));
         this.leaveRoom(true);   // Forced leave (don't re-notify)
       }
     });
@@ -368,6 +429,14 @@ export const Multiplayer = {
         this._syncFromRemote(remoteState);
       }
     });
+
+    // Listen for incoming reactions from the opponent
+    roomRef.child('reaction').on('value', (snap) => {
+      const data = snap.val();
+      if (data && data.sender !== State.userId) {
+        this._showReaction(data.emoji, false);
+      }
+    });
   },
 
   /**
@@ -378,8 +447,41 @@ export const Multiplayer = {
    */
   pushState() {
     if (!State.isMultiplayer) return;
-    const roomRef = db.ref(`rooms/${State.roomCode}/gameState`);
+    const roomRef = db.ref(`rings/${State.roomCode}/gameState`);
     roomRef.set(this._getSerializableState());
+  },
+
+  /**
+   * Pushes a partial update to the game state.
+   * Least data intensive way to sync changes across the server.
+   * @param {object} delta - Key-value pairs to update.
+   */
+  pushStateUpdate(delta) {
+    if (!State.isMultiplayer || !State.roomCode) return;
+    const updateObj = {
+      ...delta,
+      lastModifiedBy: State.userId,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    };
+    db.ref(`rings/${State.roomCode}/gameState`).update(updateObj);
+  },
+
+  /**
+   * Efficiently pushes a single move and associated state changes.
+   * @param {number} r - Row index.
+   * @param {number} c - Column index.
+   * @param {string} player - 'X' or 'O'.
+   */
+  pushMove(r, c, player) {
+    this.pushStateUpdate({
+      [`grid/${r}/${c}`]: player,
+      currentPlayer: State.currentPlayer,
+      scores: State.scores,
+      scoredChains: Array.from(State.scoredChains),
+      scoredLines: State.scoredLines,
+      gameActive: State.gameActive,
+      winner: State.winner || null
+    });
   },
 
   /**
@@ -435,24 +537,34 @@ export const Multiplayer = {
     const oldSize = State.gridSize;
     const newSize = data.gridSize || State.gridSize;
 
-    // ── Defensively reconstruct the grid ─────────────────────────────
-    // Firebase omits empty-string values and may collapse sparse arrays,
-    // so we build a fresh grid and copy only the non-empty cells.
-    const safeGrid = Array(newSize).fill(null).map(() => Array(newSize).fill(''));
-    if (data.grid) {
-      for (let r = 0; r < newSize; r++) {
-        if (data.grid[r]) {
-          for (let c = 0; c < newSize; c++) {
-            if (data.grid[r][c]) {
-              safeGrid[r][c] = data.grid[r][c];
+    // ── Defensively update the local grid ───────────────────────────
+    // We only perform a full reconstruction if the grid doesn't exist
+    // or the size has changed (expansion). Otherwise, we apply deltas.
+    if (!State.grid || State.grid.length !== newSize) {
+      const safeGrid = Array(newSize).fill(null).map(() => Array(newSize).fill(''));
+      if (data.grid) {
+        for (let r = 0; r < newSize; r++) {
+          if (data.grid[r]) {
+            for (let c = 0; c < newSize; c++) {
+              if (data.grid[r][c]) safeGrid[r][c] = data.grid[r][c];
             }
           }
         }
       }
+      State.grid = safeGrid;
+    } else if (data.grid) {
+      // Incremental sync: only iterate over keys present in the update
+      // (Firebase may send the grid as a sparse object or dense array)
+      Object.keys(data.grid).forEach(r => {
+        if (data.grid[r]) {
+          Object.keys(data.grid[r]).forEach(c => {
+            State.grid[r][c] = data.grid[r][c];
+          });
+        }
+      });
     }
 
     // ── Apply remote values to local State ───────────────────────────
-    State.grid          = safeGrid;
     State.gridSize      = newSize;
     State.currentPlayer = data.currentPlayer;
     State.duration      = data.duration || 0;
@@ -514,11 +626,12 @@ export const Multiplayer = {
     if (!State.isMultiplayer) return;
 
     if (State.roomCode) {
-      const roomRef = db.ref(`rooms/${State.roomCode}`);
+      const roomRef = db.ref(`rings/${State.roomCode}`);
 
       // Detach all listeners first to prevent hearing our own status update
       roomRef.child('status').off();
       roomRef.child('gameState').off();
+      roomRef.child('reaction').off();
       roomRef.off();
 
       if (!forced) {
@@ -539,6 +652,10 @@ export const Multiplayer = {
     if (App.currentScreen !== 'menu') {
       App.showScreen('menu');
     }
+
+    // Hide reaction UI
+    document.getElementById('reaction-container').style.display = 'none';
+    document.getElementById('reaction-tray').classList.remove('open');
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -616,5 +733,71 @@ export const Multiplayer = {
     this._copyToClipboard(State.roomCode)
       .then(finishCopy)
       .catch(() => App.showToast('Could not copy code.'));
+  },
+
+  /**
+   * Toggles the visibility of the emoji reaction tray.
+   */
+  toggleReactionTray() {
+    const tray = document.getElementById('reaction-tray');
+    if (tray) tray.classList.toggle('open');
+  },
+
+  /**
+   * Pushes a new emoji reaction to Firebase for the remote player to see.
+   * @param {string} emoji - The emoji character to send.
+   */
+  sendReaction(emoji) {
+    if (!State.isMultiplayer || !State.roomCode) return;
+    
+    // Spam prevention: 3 second cooldown
+    const now = Date.now();
+    if (now - State.lastReactionTime < 3000) {
+      App.showToast(i18n.t('spam_warning'));
+      return;
+    }
+    State.lastReactionTime = now;
+
+    // Using a separate 'reaction' node to avoid full game state syncs
+    const ref = db.ref(`rings/${State.roomCode}/reaction`);
+    ref.set({
+      emoji,
+      sender: State.userId,
+      // Using a random salt to ensure 'value' listener triggers even if same emoji sent twice
+      salt: Math.random(),
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    this.toggleReactionTray();
+    
+    // Show locally as well (feedback)
+    this._showReaction(emoji, true);
+  },
+
+  /**
+   * Renders a floating reaction bubble on the screen.
+   * @param {string} emoji - The emoji to display.
+   * @param {boolean} isLocal - Whether this reaction was sent by the local player.
+   * @private
+   */
+  _showReaction(emoji, isLocal) {
+    const bubble = document.createElement('div');
+    bubble.className = 'reaction-bubble';
+    bubble.textContent = emoji;
+
+    // Position at the center of the grid wrapper for maximum visibility
+    const wrapper = document.getElementById('grid-wrapper');
+    if (wrapper) {
+      const rect = wrapper.getBoundingClientRect();
+      bubble.style.position = 'fixed';
+      bubble.style.left = `${rect.left + rect.width / 2}px`;
+      bubble.style.top = `${rect.top + rect.height / 2}px`;
+    } else {
+      bubble.style.left = '50%';
+      bubble.style.top = '50%';
+    }
+
+    document.body.appendChild(bubble);
+    setTimeout(() => bubble.remove(), 2000);
   }
 };

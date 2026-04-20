@@ -31,6 +31,7 @@ import {
 } from './constants.js';
 import { makeXSvg, makeOSvg, makeGhostX, makeGhostO } from './svg.js';
 import { resetKeyboardFocus } from './main.js';
+import { i18n } from './i18n.js';
 
 // ---------------------------------------------------------------------------
 // Grid layout constants (shared by buildGrid and redrawAllStrikes)
@@ -131,10 +132,7 @@ export const Render = {
     // --- Rebuild all cell elements from scratch ---
     gridEl.innerHTML = '';
 
-    // Add coordinate labels for 5x5+ grids
-    if (gridSize >= 5) {
-      this._addGridCoordinates(gridEl, gridSize, gap, padding);
-    }
+    // Coordinate labels removed per user request
 
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
@@ -178,6 +176,11 @@ export const Render = {
     // Refresh dependent UI elements
     this.updateGridBorder();
     this.updateGridSizeBadge();
+
+    // Show coordinate labels (A1, B2...) only for 5x5 and larger grids
+    if (gridSize >= 5) {
+      this._addGridCoordinates(gridEl, gridSize, gap, padding);
+    }
 
     // Redraw all persistent strike lines after the DOM rebuild
     this.redrawAllStrikes();
@@ -323,9 +326,13 @@ export const Render = {
    */
   updateTurnIndicator() {
     const ti = document.getElementById('turn-indicator');
+    const name = State.names[State.currentPlayer];
 
-    let name = State.names[State.currentPlayer];
-    if (State.isMultiplayer) {
+    this.updateGridBorder();
+
+    if (State.isThinking) {
+      ti.innerHTML = `${i18n.t('ai_thinking')} <span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>`;
+    } else if (State.isMultiplayer) {
       const isOurTurn = State.currentPlayer === State.playerRole;
 
       // Fail-safe: unlock the processing flag if it's now our turn.
@@ -334,13 +341,13 @@ export const Render = {
       if (isOurTurn) State.isProcessing = false;
 
       ti.classList.remove('hidden');
-      ti.textContent = isOurTurn ? "Your Turn" : "Opponent's Turn";
+      ti.textContent = isOurTurn ? i18n.t('your_turn') : i18n.t('opponent_turn');
     } else {
       ti.classList.remove('hidden');
-      ti.textContent = `${name}'s Turn`;
+      ti.textContent = (State.currentPlayer === 'O' && State.mode === 'single') 
+        ? i18n.t('ai_turn')
+        : `${name} ${i18n.t('your_turn')}`;
     }
-
-    this.updateGridBorder();
 
     // Swap ghost previews on all empty cells to the new current player's mark
     const html = this.getGhostHtml();
