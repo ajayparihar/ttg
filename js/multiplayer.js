@@ -145,7 +145,14 @@ export const Multiplayer = {
       App.showToast("Logged in with Google!");
     } catch (err) {
       console.error("Google login failed:", err);
-      App.showToast("Login failed.");
+      
+      // Specifically handle unauthorized domain error
+      if (err.code === 'auth/unauthorized-domain') {
+        App.showToast("Domain not authorized. Use Firebase Console to fix.");
+        console.warn("ACTION REQUIRED: Add ajayparihar.github.io to Authorized Domains in Firebase.");
+      } else {
+        App.showToast("Login failed.");
+      }
     }
   },
 

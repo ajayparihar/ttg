@@ -35,10 +35,25 @@ window.Multiplayer = Multiplayer;
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
 
-  /* ---- 1. Restore user preferences (e.g. theme) from localStorage ---- */
+  /* ---- 1. Handle splash screen dismissal ---- */
+  const splash = document.getElementById('splash-screen');
+  if (splash) {
+    // Wait for at least 2.5 seconds (animation duration)
+    // Also wait for the font to be ready for the best look
+    const splashTimeout = new Promise(resolve => setTimeout(resolve, 2500));
+    const fontReady = document.fonts ? document.fonts.ready : Promise.resolve();
+
+    Promise.all([splashTimeout, fontReady]).then(() => {
+      splash.classList.add('fade-out');
+      // Remove from DOM after fade animation to keep it clean
+      setTimeout(() => splash.remove(), 800);
+    });
+  }
+
+  /* ---- 2. Restore user preferences (e.g. theme) from localStorage ---- */
   App.loadSaved();
 
-  /* ---- 2. Attach pinch-to-zoom and one-finger pan listeners ---- */
+  /* ---- 3. Attach pinch-to-zoom and one-finger pan listeners ---- */
   initZoomPan(Render);
 
   /* ---- 3. Handle deep-link multiplayer invites (?room=XXXX) ---- */

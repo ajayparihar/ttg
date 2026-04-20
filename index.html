@@ -11,8 +11,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- PWA -->
+  <!-- PWA & Icons -->
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="favicon.png">
 
   <!-- Font Awesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -26,6 +27,24 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+<!-- ============================================================
+     SPLASH SCREEN
+     ============================================================ -->
+<div id="splash-screen" class="splash-screen">
+  <div class="splash-content">
+    <div class="splash-logo">
+      <img src="favicon.png" alt="Tic Tac Grow Logo" id="splash-img">
+    </div>
+    <div class="splash-details">
+      <h1 class="splash-title">TIC TAC GROW</h1>
+      <p class="splash-dev">By Bheb Developer</p>
+    </div>
+  </div>
+  <div class="splash-loader">
+    <div class="loader-bar"></div>
+  </div>
+</div>
 
 <div class="bg-particles" id="bg-particles" aria-hidden="true">
   <div class="particle p1"></div>

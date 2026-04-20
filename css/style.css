@@ -159,6 +159,119 @@ body {
 }
 
 /* ============================================================
+   SPLASH SCREEN
+   ============================================================ */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #050505;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.8s var(--smooth), visibility 0.8s;
+}
+
+.splash-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: splashIn 1.2s var(--spring) forwards;
+}
+
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 30px;
+  background: var(--bg-accent);
+  padding: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(var(--color-x-rgb), 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-5deg);
+  animation: logoPop 1.5s var(--spring) infinite alternate;
+}
+
+.splash-logo img {
+  width: 85%;
+  height: 85%;
+  object-fit: contain;
+}
+
+.splash-details {
+  text-align: center;
+}
+
+.splash-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--color-x), var(--color-o));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 4px;
+}
+
+.splash-dev {
+  font-family: var(--font);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  color: var(--fg-secondary);
+  opacity: 0;
+  animation: fadeIn 0.8s ease 0.6s forwards;
+}
+
+.splash-loader {
+  position: absolute;
+  bottom: 60px;
+  width: 120px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.loader-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-x), var(--color-o));
+  animation: loadProgress 2s ease-in-out forwards;
+}
+
+@keyframes splashIn {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes logoPop {
+  from { transform: rotate(-5deg) scale(1); }
+  to   { transform: rotate(5deg) scale(1.05); }
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@keyframes loadProgress {
+  to { width: 100%; }
+}
+
+/* ============================================================
    SCREENS
    ============================================================ */
 .screen {
