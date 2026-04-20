@@ -1,129 +1,234 @@
 'use strict';
 
-/* ============================================================
-   GAME STATE
-   Single source of truth for all mutable game data.
-   Never read UI elements to determine game state — always
-   read/write this object and let Render synchronise the DOM.
-   ============================================================ */
+/**
+ * @file state.js — Centralised game state for Tic Tac Grow.
+ *
+ * This object is the **single source of truth** for all mutable game data.
+ * No module should read the DOM to infer game state — instead, read/write
+ * properties here and let {@link module:render|Render} synchronise the UI.
+ *
+ * Properties are grouped into logical sections:
+ *  1. **Game mode & config** — mode, duration, AI level.
+ *  2. **Board state**        — grid, size, current player, scores.
+ *  3. **Undo system**        — snapshot and one-shot flag.
+ *  4. **Scoring history**    — chain IDs and visual strike lines.
+ *  5. **Timers**             — interval and timeout handles.
+ *  6. **Zoom / Pan**         — viewport transform state.
+ *  7. **UI flags**           — processing lock, pause toggle.
+ *  8. **Multiplayer**        — room code, role, user identity.
+ *
+ * @module state
+ */
 
 /**
  * @typedef {'single'|'dual'} GameMode
+ *   - `'single'` — human vs AI.
+ *   - `'dual'`   — human vs human (local or online).
+ *
  * @typedef {'X'|'O'|''} Cell
+ *   A single board cell: `'X'`, `'O'`, or empty string.
  */
 
 export const State = {
-  /** @type {GameMode} Active game mode. */
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  1. GAME MODE & CONFIGURATION
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /** @type {GameMode} Currently active game mode. */
   mode: 'dual',
 
-  /** Game duration in seconds. 0 = unlimited (no timer). */
+  /**
+   * Game duration in seconds.
+   * `0` means unlimited — the countdown timer is hidden entirely.
+   */
   duration: 180,
 
-  /** AI difficulty level (1-10). */
+  /**
+   * AI difficulty level on a 1–10 scale.
+   * Only relevant when `mode === 'single'`.
+   * @see module:constants.LEVEL
+   */
   aiLevel: 6,
 
-  /** Current board size (starts at 3, grows on ties). */
+  // ═══════════════════════════════════════════════════════════════════════
+  //  2. BOARD STATE
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Current board side length.
+   * Starts at 3 and increments by 1 each time the grid expands on a tie.
+   */
   gridSize: 3,
 
   /**
-   * 2-D board array.
+   * 2-D board array indexed as `grid[row][col]`.
    * @type {Cell[][]}
    */
   grid: [],
 
-  /** Which player is currently moving. */
+  /**
+   * Mark of the player whose turn it is right now.
+   * Alternates between `'X'` and `'O'` via {@link module:game.switchTurn}.
+   */
   currentPlayer: 'X',
 
-  /** Accumulated scores for both players. */
+  /** Accumulated point totals for each player. */
   scores: { X: 0, O: 0 },
 
-  /** Display names for both players. */
+  /**
+   * Display names for each player, shown on the HUD and game-over screen.
+   * Defaults are overwritten by the name-input screen before the match starts.
+   */
   names: { X: 'Xi', O: 'Om' },
 
   /** Seconds remaining on the countdown timer. */
   timeLeft: 0,
 
-  /** False when pre-game or game-over; true while a match is running. */
+  /**
+   * Whether a match is currently in progress.
+   * `false` during pre-game menus and the game-over screen.
+   */
   gameActive: false,
 
-  /** True once the player has consumed their single undo. */
+  // ═══════════════════════════════════════════════════════════════════════
+  //  3. UNDO SYSTEM
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * `true` once the player has consumed their single undo.
+   * Each match allows exactly one undo; the button is greyed out afterwards.
+   */
   undoUsed: false,
 
   /**
-   * Snapshot taken before each human move, used by the undo feature.
-   * @type {{ grid: Cell[][], scores: object, currentPlayer: string,
-   *          scoredChains: Set<string>, gridSize: number }|null}
+   * Deep snapshot of board state taken *before* each human move.
+   * Consuming the undo restores this snapshot and sets it to `null`.
+   *
+   * @type {{
+   *   grid: Cell[][],
+   *   scores: { X: number, O: number },
+   *   currentPlayer: string,
+   *   scoredChains: Set<string>,
+   *   scoredLines: Array,
+   *   gridSize: number
+   * } | null}
    */
   undoSnapshot: null,
 
+  // ═══════════════════════════════════════════════════════════════════════
+  //  4. SCORING HISTORY
+  // ═══════════════════════════════════════════════════════════════════════
+
   /**
-   * Serialised IDs of chains already rewarded with points.
-   * Prevents double-counting the same chain when the board grows.
+   * Set of serialised chain IDs that have already been rewarded with points.
+   * Prevents double-counting the same chain when the board grows and the
+   * chain is re-detected.
    * @type {Set<string>}
    */
   scoredChains: new Set(),
 
   /**
-   * All scored strike lines to persist visually.
-   * @type {Array<{chains: number[][][], player: 'X'|'O'}>}
+   * Persistent record of all scored strike lines, used to redraw the
+   * SVG overlay after DOM rebuilds (e.g. grid expansion).
+   * @type {Array<{ chains: Array<object>, player: 'X'|'O' }>}
    */
   scoredLines: [],
 
-  /** Grid size at the start of the most recent round (used for expansion logic). */
+  /**
+   * Grid size at the start of the most recent round.
+   * Compared against `gridSize` to detect expansion.
+   */
   lastGridSize: 3,
 
-  /** Handle for the countdown interval (@see App.startTimer). */
+  // ═══════════════════════════════════════════════════════════════════════
+  //  5. TIMER & AI HANDLES
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Handle returned by `setInterval` for the countdown clock.
+   * Cleared by {@link module:game.clearTimers}.
+   * @type {number|null}
+   */
   timerInterval: null,
 
-  /** Handle for the AI move timeout (@see triggerAI). */
+  /**
+   * Handle returned by `setTimeout` for the AI's delayed move.
+   * Cleared by {@link module:game.clearTimers}.
+   * @type {number|null}
+   */
   aiTimeout: null,
 
-  /* ---- Zoom / Pan ---- */
+  // ═══════════════════════════════════════════════════════════════════════
+  //  6. ZOOM / PAN VIEWPORT STATE
+  // ═══════════════════════════════════════════════════════════════════════
 
   /** Current zoom multiplier (1.0 = 100 %). */
   zoomLevel: 1.0,
 
-  /** True while a two-finger pinch gesture is active. */
+  /** `true` while a two-finger pinch gesture is actively tracked. */
   isPinching: false,
 
-  /** Touch distance at the moment the pinch started. */
+  /** Distance (px) between the two fingers when the pinch gesture started. */
   pinchStartDist: 0,
 
-  /** Zoom level at the moment the pinch started. */
+  /** Zoom level captured at the instant the pinch gesture started. */
   pinchStartZoom: 1,
 
-  /** Horizontal pan offset in pixels. */
+  /** Horizontal pan offset in CSS pixels (positive = right). */
   panX: 0,
 
-  /** Vertical pan offset in pixels. */
+  /** Vertical pan offset in CSS pixels (positive = down). */
   panY: 0,
 
-  /** True while a single-finger pan gesture is active (zoomed-in only). */
+  /** `true` while a single-finger pan gesture is in progress (zoomed-in only). */
   isPanning: false,
 
-  /** Raw X coordinate where the pan gesture started. */
+  /** Raw client-X coordinate where the current pan gesture began. */
   panStartX: 0,
 
-  /** Raw Y coordinate where the pan gesture started. */
+  /** Raw client-Y coordinate where the current pan gesture began. */
   panStartY: 0,
 
-  /** True while a move or animation is being processed (interlocks input). */
+  // ═══════════════════════════════════════════════════════════════════════
+  //  7. UI FLAGS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Input interlock flag.
+   * Set to `true` while a move or expansion animation is being processed.
+   * Prevents the player from clicking cells or triggering double moves.
+   */
   isProcessing: false,
 
-  /** True while the pause modal is open. */
+  /** `true` while the pause modal is visible. */
   paused: false,
 
-  /* ---- Multiplayer ---- */
+  // ═══════════════════════════════════════════════════════════════════════
+  //  8. MULTIPLAYER
+  // ═══════════════════════════════════════════════════════════════════════
 
-  /** True if this is a remote multiplayer game. */
+  /** `true` when the current match is a remote (Firebase) multiplayer game. */
   isMultiplayer: false,
 
-  /** The 4-character room code. */
+  /**
+   * The 4-character alphanumeric room code (e.g. `"A3BK"`).
+   * `null` when not in a multiplayer session.
+   * @type {string|null}
+   */
   roomCode: null,
 
-  /** 'X' (Host) or 'O' (Guest). */
+  /**
+   * This client's assigned role in a multiplayer game.
+   * `'X'` for the host, `'O'` for the guest, `null` outside multiplayer.
+   * @type {'X'|'O'|null}
+   */
   playerRole: null,
 
-  /** User ID of the local player. */
+  /**
+   * Firebase anonymous user ID for the local player.
+   * Obtained once during {@link module:multiplayer.Multiplayer.initId}.
+   * @type {string|null}
+   */
   userId: null,
 };

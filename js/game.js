@@ -1,68 +1,113 @@
+/**
+ * @file game.js — Core game loop and move processing for Tic Tac Grow.
+ *
+ * This module owns the runtime game lifecycle:
+ *
+ *  • **Input handling**    — validates preconditions on cell clicks.
+ *  • **Move processing**   — places marks, checks outcomes, awards points.
+ *  • **Turn management**   — alternates players, triggers AI.
+ *  • **Grid expansion**    — grows the board on ties.
+ *  • **Game over**         — renders the result screen, persists stats.
+ *  • **Timer cleanup**     — clears countdown and AI timeouts.
+ *
+ * The module bridges to Render for DOM updates, to AI for computer moves,
+ * and to Multiplayer for remote state synchronisation.
+ *
+ * @module game
+ */
+
 import { State } from './state.js';
 import { Render, setCellClickHandler } from './render.js';
 import { AI } from './ai.js';
-import { 
-  copyGrid, 
-  isGridFull, 
-  check3x3Win, 
-  scoreMoveOnGrid, 
-  getChainLength, 
-  getChainCells, 
-  createGrid 
+import {
+  copyGrid,
+  isGridFull,
+  check3x3Win,
+  scoreMoveOnGrid,
+  getChainLength,
+  getChainCells,
+  createGrid,
+  DIRECTIONS
 } from './grid.js';
 import { launchConfetti } from './confetti.js';
 import { App } from './app.js';
 import { makeCrownSvg } from './svg.js';
 import { Multiplayer } from './multiplayer.js';
 
-/* ---- Input handling ---- */
+// ═══════════════════════════════════════════════════════════════════════════
+//  Input handling
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Click handler attached to every empty cell element.
- * Validates all preconditions before forwarding to makeMove().
  *
- * @param {MouseEvent} e
+ * Validates a comprehensive set of preconditions before forwarding to
+ * {@link makeMove}.  Guards against clicks during:
+ *  - Inactive game state (pre-game or game-over).
+ *  - Pause modal being open.
+ *  - Move/animation currently processing (debounce interlock).
+ *  - Cell already occupied.
+ *  - AI's turn (single-player).
+ *  - Opponent's turn (multiplayer).
+ *
+ * @param {MouseEvent} e - The click event on a cell `<div>`.
  */
 export function handleCellClick(e) {
   const cell = e.currentTarget;
   const r    = parseInt(cell.dataset.r, 10);
   const c    = parseInt(cell.dataset.c, 10);
 
-  if (!State.gameActive)       return; // game not running
-  if (State.paused)            return; // pause modal open
-  if (State.isProcessing)      return; // already handling a move
-  if (State.grid[r][c])        return; // cell already occupied
+  // --- Precondition guards (order matters for UX responsiveness) ---
+  if (!State.gameActive)       return;   // Game not running
+  if (State.paused)            return;   // Pause modal is open
+  if (State.isProcessing)      return;   // Already handling a move
+  if (State.grid[r][c])        return;   // Cell already occupied
 
-  // Ignore human clicks during AI's turn
+  // Block input when it's the AI's turn
   if (State.mode === 'single' && State.currentPlayer === 'O') return;
 
-  // Ignore human clicks if it's not our turn in multiplayer
+  // Block input when it's the remote opponent's turn
   if (State.isMultiplayer && State.currentPlayer !== State.playerRole) return;
 
+  // All guards passed — lock input and execute the move
   State.isProcessing = true;
-  Render.updateTurnIndicator(); // Hide ghosts immediately
+  Render.updateTurnIndicator();   // Hide ghosts immediately
   makeMove(r, c);
 }
 
-// Register handler with Render module to break circular dependency
+// Register handler with the Render module to break the circular dependency
+// (Render needs this handler, but this module imports Render).
 setCellClickHandler(handleCellClick);
 
-/* ---- Core move flow ---- */
+// ═══════════════════════════════════════════════════════════════════════════
+//  Core move flow
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Places the current player's mark at (r, c) and processes the outcome.
- * Called for both human moves and AI moves.
  *
- * @param {number}  r     - Row index.
- * @param {number}  c     - Column index.
- * @param {boolean} [isAI=false] - True when the AI is calling this function.
+ * Called for both human moves (via {@link handleCellClick}) and AI moves
+ * (via {@link triggerAI}).
+ *
+ * **Flow:**
+ *  1. Final guard: bail if the game ended or the cell is occupied.
+ *  2. Snapshot the board for undo (human moves only).
+ *  3. Place the mark in State and update the DOM.
+ *  4. Delegate outcome processing to the appropriate handler based on
+ *     board size (3×3 classic rules vs 4×4+ scoring rules).
+ *
+ * @param {number}  r      - Row index.
+ * @param {number}  c      - Column index.
+ * @param {boolean} [isAI=false] - `true` when called by the AI engine.
  */
 export function makeMove(r, c, isAI = false) {
   if (!State.gameActive || State.grid[r][c]) return;
 
   State.isProcessing = true;
 
-  // Save undo snapshot before every human move
+  // ── Save undo snapshot before every human move ─────────────────────
+  // (AI moves are excluded — the undo should revert to "before the
+  //  human's last move", not to "before the AI's response".)
   if (!isAI) {
     State.undoSnapshot = {
       grid:          copyGrid(State.grid),
@@ -74,10 +119,12 @@ export function makeMove(r, c, isAI = false) {
     };
   }
 
+  // ── Place the mark ─────────────────────────────────────────────────
   const player       = State.currentPlayer;
   State.grid[r][c]   = player;
   Render.updateCell(r, c, player);
 
+  // ── Delegate to board-size-specific outcome processor ──────────────
   if (State.gridSize === 3) {
     _processMoveOn3x3();
   } else {
@@ -85,37 +132,56 @@ export function makeMove(r, c, isAI = false) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  Outcome processors (private)
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
  * Post-move processing for the classic 3×3 board.
- * Checks for a win; if the board is full with no winner, expands.
+ *
+ * **Rules:**
+ *  - If a player completes a line of 3 → instant win.
+ *  - If the board is full with no winner → grid expands to 4×4 (tie).
+ *  - Otherwise → switch turn.
+ *
+ * @private
  */
 function _processMoveOn3x3() {
   const win = check3x3Win(State.grid);
+
   if (win) {
     Render.drawWinStrike(win.cells, win.winner);
     setTimeout(() => endGame(win.winner, 'classic'), 600);
     return;
   }
+
   if (isGridFull(State.grid)) {
+    // Board full with no winner → expand the grid (tie resolution)
     expandGrid();
     return;
   }
+
   switchTurn();
 }
 
 /**
- * Returns the cells for a full-board line of the current grid size.
- * If no winning line exists, returns null.
- * @param {number} r
- * @param {number} c
- * @param {'X'|'O'} player
- * @returns {number[][]|null}
+ * Checks whether the move at (r, c) completes a full-board-length chain
+ * (i.e. a line of `gridSize` marks).  If so, returns the winning cells.
+ *
+ * On 4×4+ boards this is a secondary "instant win" condition alongside
+ * the primary scoring system — filling an entire row/column/diagonal
+ * ends the game immediately.
+ *
+ * @param {number}    r      - Row of the last move.
+ * @param {number}    c      - Column of the last move.
+ * @param {'X'|'O'}   player - Mark placed.
+ * @returns {number[][] | null} Winning cells, or `null`.
+ * @private
  */
 function _findFullChainWin(r, c, player) {
   const needed = State.gridSize;
-  const directions = [[0,1], [1,0], [1,1], [1,-1]];
 
-  for (const [dr, dc] of directions) {
+  for (const [dr, dc] of DIRECTIONS) {
     const len = getChainLength(State.grid, r, c, dr, dc, player);
     if (len >= needed) {
       return getChainCells(State.grid, r, c, dr, dc, player);
@@ -127,13 +193,23 @@ function _findFullChainWin(r, c, player) {
 
 /**
  * Post-move processing for 4×4+ boards.
- * Scores any new chains, then expands if the board is full.
  *
- * @param {number} r
- * @param {number} c
- * @param {'X'|'O'} player
+ * **Rules:**
+ *  1. Full-chain win → instant game end (same player filled an entire
+ *     row, column, or diagonal).
+ *  2. Award incremental points for any new chains ≥ 3.
+ *  3. If the board is full:
+ *     - Tied scores → expand grid (tie resolution).
+ *     - Unequal scores → high scorer wins.
+ *  4. Otherwise → switch turn.
+ *
+ * @param {number}    r      - Row of the last move.
+ * @param {number}    c      - Column of the last move.
+ * @param {'X'|'O'}   player - Mark just placed.
+ * @private
  */
 function _processMoveOnLargeGrid(r, c, player) {
+  // ── Check for full-chain instant win ───────────────────────────────
   const winningLine = _findFullChainWin(r, c, player);
   if (winningLine) {
     Render.drawWinStrike(winningLine, player);
@@ -141,6 +217,7 @@ function _processMoveOnLargeGrid(r, c, player) {
     return;
   }
 
+  // ── Score any new chains created by this move ──────────────────────
   const result = scoreMoveOnGrid(State.grid, r, c, player, State.scoredChains);
 
   if (result.points > 0) {
@@ -148,17 +225,21 @@ function _processMoveOnLargeGrid(r, c, player) {
     Render.updateScore(player);
     Render.drawScoreStrikes(result.chains, player);
 
-    // Toast for notable scores
-    if (result.points >= 30) App.showToast(`${State.names[player]} +${result.points} pts!`);
-    else if (result.points >= 20) App.showToast(`${State.names[player]} +${result.points} pts!`);
+    // Notify the player with a toast for notable scores
+    if (result.points >= 20) {
+      App.showToast(`${State.names[player]} +${result.points} pts!`);
+    }
   }
 
+  // ── Check if the board is full ─────────────────────────────────────
   if (isGridFull(State.grid)) {
     if (State.scores.X === State.scores.O) {
+      // Tied scores → expand the grid to break the deadlock
       expandGrid();
       return;
     }
 
+    // Unequal scores → declare the higher scorer the winner
     const winner = State.scores.X > State.scores.O ? 'X' : 'O';
     setTimeout(() => endGame(winner, 'classic'), 300);
     return;
@@ -167,66 +248,89 @@ function _processMoveOnLargeGrid(r, c, player) {
   switchTurn();
 }
 
-/* ---- Turn management ---- */
+// ═══════════════════════════════════════════════════════════════════════════
+//  Turn management
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Advances to the next player's turn and triggers the AI if applicable.
+ * Advances to the next player's turn.
+ *
+ * After switching:
+ *  - Unlocks the input interlock (`isProcessing = false`).
+ *  - Updates the turn indicator and ghost previews.
+ *  - Pushes the new state to Firebase (multiplayer).
+ *  - Triggers the AI if it's now the computer's turn (single-player).
  */
 export function switchTurn() {
   State.currentPlayer = State.currentPlayer === 'X' ? 'O' : 'X';
-  State.isProcessing = false; // Turn is now open for input
+  State.isProcessing  = false;   // Turn is now open for input
   Render.updateTurnIndicator();
 
-  // Sync turn switch to Firebase
+  // Synchronise turn change to Firebase for the remote player
   if (State.isMultiplayer) {
     Multiplayer.pushState();
   }
 
+  // Trigger the AI if it's now the computer's turn
   if (State.mode === 'single' && State.currentPlayer === 'O' && State.gameActive) {
     triggerAI();
   }
 }
 
 /**
- * Shows the AI "thinking" indicator and schedules the AI move after
- * AI_DELAY_MS milliseconds.  The delay prevents the AI from feeling
- * instantaneous and gives the human a moment to see what just happened.
+ * Shows the "AI thinking…" indicator and schedules the AI's move after
+ * a randomised delay (500–2500 ms).
+ *
+ * The delay prevents the AI from feeling instantaneous and gives the
+ * human player a moment to observe the board after their own move.
  */
 export function triggerAI() {
   document.getElementById('ai-thinking').style.display = 'flex';
 
-  // Random delay to simulate human thinking: 500ms to 2500ms
+  // Randomised thinking delay for a more natural feel
   const delay = 500 + Math.random() * 2000;
 
   State.aiTimeout = setTimeout(() => {
     document.getElementById('ai-thinking').style.display = 'none';
-    if (!State.gameActive) return;
+    if (!State.gameActive) return;   // Game may have ended while "thinking"
 
-    // AI receives a copy so the lookahead cannot mutate the real board
+    // AI receives a **copy** of the grid so look-ahead mutations
+    // cannot corrupt the real board
     const move = AI.getBestMove(copyGrid(State.grid), 'O', 'X', State.aiLevel);
     if (move) makeMove(move.r, move.c, /* isAI */ true);
   }, delay);
 }
 
-/* ---- Grid expansion ---- */
+// ═══════════════════════════════════════════════════════════════════════════
+//  Grid expansion
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
  * Grows the board by one row and one column (tie resolution).
- * Rebuilds the grid DOM after a brief animation delay.
+ *
+ * **Expansion algorithm:**
+ *  1. Increment `State.gridSize`.
+ *  2. Append an empty cell to each existing row (new column).
+ *  3. Push a new full-width empty row (new row).
+ *  4. Play the expand animation.
+ *  5. After a short delay, rebuild the DOM and switch turns.
  */
 export function expandGrid() {
   const oldSize  = State.gridSize;
   State.gridSize += 1;
 
-  // Expand the 2-D array in-place
+  // Expand the 2-D array in-place: add one column to each existing row…
   State.grid.forEach(row => row.push(''));
+  // …then add a new full-width row
   State.grid.push(Array(State.gridSize).fill(''));
 
   Render.animateGridExpand();
   App.showToast(`Board grows to ${State.gridSize}×${State.gridSize}!`);
+
+  // Lock input during the expansion animation
   State.isProcessing = true;
 
-  // Short delay so the expand animation finishes before the DOM rebuild
+  // Short delay lets the CSS animation finish before the DOM rebuild
   setTimeout(() => {
     Render.buildGrid(State.gridSize, oldSize);
     State.isProcessing = false;
@@ -234,34 +338,46 @@ export function expandGrid() {
   }, 300);
 }
 
-/* ---- Game over ---- */
+// ═══════════════════════════════════════════════════════════════════════════
+//  Game over
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Ends the current game, updates the game-over screen, persists stats,
- * and navigates to the gameover screen.
+ * Terminates the current game, renders the game-over screen, persists
+ * stats to localStorage, and notifies the remote player if multiplayer.
  *
- * @param {'X'|'O'|'draw'} winner - Winning player mark, or 'draw'.
- * @param {'classic'|'timeout'} reason - How the game ended.
+ * @param {'X'|'O'|'draw'} winner - Winning player mark, or `'draw'`.
+ * @param {'classic'|'timeout'}   reason - How the game ended.
  */
 export function endGame(winner, reason) {
-  State.gameActive = false;
+  State.gameActive   = false;
   State.isProcessing = false;
-  State.winner = winner;
+  State.winner       = winner;
   clearTimers();
 
   _renderGameOverScreen(winner, reason);
   App.showScreen('gameover');
   _persistStats();
-  
+
+  // Push final state to Firebase so the remote player sees the result
   if (State.isMultiplayer) {
     Multiplayer.pushState();
   }
 }
 
 /**
- * Fills in all game-over screen elements based on the outcome.
- * @param {string} winner
- * @param {string} reason
+ * Populates all game-over screen elements (emoji, title, subtitle,
+ * scorecard, and metadata) based on the match outcome.
+ *
+ * Handles four distinct outcome cases:
+ *  - **Draw** — handshake emoji, neutral title.
+ *  - **Human win (single-player)** — victory title + confetti.
+ *  - **AI win (single-player)** — defeat title, no confetti.
+ *  - **Multiplayer** — perspective-aware titles ("Victory" vs "Defeat").
+ *
+ * @param {string} winner - `'X'`, `'O'`, or `'draw'`.
+ * @param {string} reason - `'classic'` or `'timeout'`.
+ * @private
  */
 function _renderGameOverScreen(winner, reason) {
   const goEmoji    = document.getElementById('go-emoji');
@@ -270,34 +386,38 @@ function _renderGameOverScreen(winner, reason) {
   const goScores   = document.getElementById('go-scores');
   const goMeta     = document.getElementById('go-meta');
 
+  // Resolve the effective winner (accounting for score ties)
   const isDraw = (winner === 'draw' || (!winner && State.scores.X === State.scores.O));
-  // Determine winner by score if not explicitly passed, or 'draw'
   const w = isDraw ? 'draw' : (winner || (State.scores.X > State.scores.O ? 'X' : 'O'));
 
+  // ── Draw outcome ───────────────────────────────────────────────────
   if (isDraw) {
-    goEmoji.innerHTML = '🤝'; // Simple hand-shake for draw
+    goEmoji.innerHTML = '🤝';
     goEmoji.className = 'gameover-emoji';
     goEmoji.style.color = 'var(--fg-secondary)';
-    
+
     goTitle.textContent = "DRAW";
     goTitle.className   = 'gameover-title draw';
     goSubtitle.textContent = "A well-fought battle.";
-  } else {
+  }
+  // ── Win / loss outcome ─────────────────────────────────────────────
+  else {
     const winnerName = State.names[w];
-    
+
+    // Winner initial with crown icon
     goEmoji.innerHTML = `
       <div class="winner-initial ${w.toLowerCase()}-color">
         <div class="winner-crown">${makeCrownSvg()}</div>
         ${w}
       </div>`;
     goEmoji.className = 'gameover-emoji';
-    
-    // Choose an emotional title based on the outcome
+
+    // Choose context-appropriate title and subtitle
     let titles = ["VICTORY!", "DOMINATION!", "YOU WIN!", "CHAMPION!"];
     let quotes = ["dominated the field.", "showed no mercy.", "takes the crown.", "is unstoppable."];
-    
-    // Multiplayer perspective
+
     if (State.isMultiplayer) {
+      // Multiplayer: perspective-aware messaging
       if (w === State.playerRole) {
         titles = ["VICTORY!", "DOMINATION!", "YOU WON!", "CHAMPION!"];
         quotes = ["dominated the field.", "takes the crown.", "is the master!"];
@@ -305,37 +425,37 @@ function _renderGameOverScreen(winner, reason) {
         titles = ["OUCH!", "DEFEAT", "TOUGH BREAK", "NEXT TIME!"];
         quotes = ["got outplayed.", "almost had it!", "needs a rematch!"];
       }
-    } 
-    // Single-player perspective (AI won)
-    else if (State.mode === 'single' && w === 'O') {
+    } else if (State.mode === 'single' && w === 'O') {
+      // Single-player: AI won
       titles = ["DEFEAT", "GAME OVER", "AI VICTORIOUS", "AI DOMINATES"];
     }
 
-    const isDefeat = (State.isMultiplayer && w !== State.playerRole) || (State.mode === 'single' && w === 'O');
+    const isDefeat = (State.isMultiplayer && w !== State.playerRole) ||
+                     (State.mode === 'single' && w === 'O');
 
     goTitle.textContent = titles[Math.floor(Math.random() * titles.length)];
     goTitle.className   = `gameover-title ${isDefeat ? 'defeat' : `win-${w.toLowerCase()}`}`;
     goSubtitle.textContent = `${winnerName} ${quotes[Math.floor(Math.random() * quotes.length)]}`;
-    
-    // Only launch confetti if a human won (X in single mode, either in dual)
+
+    // Launch confetti only for human victories
     if (State.mode === 'dual' || w === 'X') {
       launchConfetti(w);
     }
   }
 
-  // Build the two score rows
-  // Determine winners/losers based on the 'w' variable (the game winner)
-  // This ensures correct ordering even if scores are tied (e.g. 3x3 board win)
+  // ── Score rows ─────────────────────────────────────────────────────
+  // Winner is placed on top; loser is visually demoted.
   const isXWinner = (w === 'X');
   const isOWinner = (w === 'O');
 
   const crown = `<span class="score-winner-crown">${makeCrownSvg()}</span>`;
 
-  // Explicitly annotate players natively with (You) for clarity if multiplayer
-  const xName = State.isMultiplayer && State.playerRole === 'X' ? `${State.names.X} (You)` : State.names.X;
-  const oName = State.isMultiplayer && State.playerRole === 'O' ? `${State.names.O} (You)` : State.names.O;
+  // Annotate the local player's name with "(You)" in multiplayer
+  const xName = State.isMultiplayer && State.playerRole === 'X'
+    ? `${State.names.X} (You)` : State.names.X;
+  const oName = State.isMultiplayer && State.playerRole === 'O'
+    ? `${State.names.O} (You)` : State.names.O;
 
-  // Order the score rows: winner always on top
   const xRow = `
     <div class="gameover-score-row x-row ${isXWinner ? 'winner-row' : (isOWinner ? 'loser-row' : '')}">
       <span class="score-name-cell">${isXWinner ? crown : ''}${xName}</span>
@@ -347,16 +467,17 @@ function _renderGameOverScreen(winner, reason) {
       <span>${State.scores.O} pts</span>
     </div>`;
 
+  // Place the winner's row on top
   goScores.innerHTML = isOWinner ? (oRow + xRow) : (xRow + oRow);
-  
-  // Hide scores if both are zero (classic 3x3 win with no points)
+
+  // Hide scores entirely for classic 3×3 wins (0-0 scoreboard looks odd)
   if (State.scores.X === 0 && State.scores.O === 0) {
     goScores.style.display = 'none';
   } else {
     goScores.style.display = 'flex';
   }
 
-  // Duration label for the meta line
+  // ── Meta line (grid size + duration) ───────────────────────────────
   const durLabel =
     State.duration === 0  ? 'Unlimited' :
     State.duration === 60 ? '1 min'     :
@@ -366,8 +487,13 @@ function _renderGameOverScreen(winner, reason) {
 }
 
 /**
- * Persists aggregate game statistics to localStorage.
- * Silently swallows any storage errors (e.g. private browsing mode).
+ * Persists aggregate game statistics (total games, largest grid, highest
+ * score) to localStorage under the key `ttg_stats`.
+ *
+ * Silently swallows any storage errors (e.g. private browsing mode or
+ * storage quota exceeded).
+ *
+ * @private
  */
 function _persistStats() {
   try {
@@ -376,14 +502,17 @@ function _persistStats() {
     saved.largestGrid    = Math.max(saved.largestGrid   || 3, State.gridSize);
     saved.highestScore   = Math.max(saved.highestScore  || 0, Math.max(State.scores.X, State.scores.O));
     localStorage.setItem('ttg_stats', JSON.stringify(saved));
-  } catch (_) { /* storage unavailable — not a critical failure */ }
+  } catch (_) { /* Storage unavailable — not a critical failure */ }
 }
 
-/* ---- Timer cleanup ---- */
+// ═══════════════════════════════════════════════════════════════════════════
+//  Timer cleanup
+// ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Clears both the countdown interval and any pending AI timeout.
- * Safe to call even if neither is active.
+ * Clears both the countdown interval and any pending AI move timeout.
+ *
+ * Safe to call at any time — if neither timer is active, this is a no-op.
  */
 export function clearTimers() {
   if (State.timerInterval) { clearInterval(State.timerInterval); State.timerInterval = null; }
