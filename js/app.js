@@ -497,13 +497,13 @@ export const App = {
 
     if (State.loginSkipped) {
       container.innerHTML = `
-        <div class="user-profile guest">
-          <div class="user-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--bg-accent);">
+        <div class="user-profile guest" onclick="Multiplayer.loginWithGoogle()">
+          <div class="user-avatar guest-avatar">
             <i class="fa-solid fa-user-secret"></i>
           </div>
           <div class="user-info">
-            <span class="user-name">Offline Guest</span>
-            <span class="user-status offline">Online Disabled</span>
+            <span class="user-name">Guest Player</span>
+            <span class="user-action-link">Connect Google</span>
           </div>
         </div>
       `;
@@ -517,7 +517,7 @@ export const App = {
         <img src="${State.userProfile.photo}" alt="Profile" class="user-avatar">
         <div class="user-info">
           <span class="user-name">${State.userProfile.name}</span>
-          <span class="user-status">Verified Gamer</span>
+          <button class="user-logout-btn" onclick="Multiplayer.logout()">Sign Out</button>
         </div>
       </div>
     `;

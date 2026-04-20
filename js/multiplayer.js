@@ -167,6 +167,19 @@ export const Multiplayer = {
     }
   },
 
+  /**
+   * Signs the user out of Firebase.
+   */
+  async logout() {
+    try {
+      await auth.signOut();
+      window.location.reload(); // Hard reload to clear all states
+    } catch (err) {
+      console.error("Logout failed:", err);
+      App.showToast("Logout failed.");
+    }
+  },
+
   // ─────────────────────────────────────────────────────────────────────
   //  Room creation (Host flow)
   // ─────────────────────────────────────────────────────────────────────
