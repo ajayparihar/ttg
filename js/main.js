@@ -50,13 +50,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---- 2. Restore user preferences (e.g. theme) from localStorage ---- */
+  /* ---- 2. Initialize Multiplayer Identity (Check for existing login) ---- */
+  Multiplayer.initId();
+
+  /* ---- 3. Restore user preferences (e.g. theme) from localStorage ---- */
   App.loadSaved();
 
-  /* ---- 3. Attach pinch-to-zoom and one-finger pan listeners ---- */
+  /* ---- 4. Attach pinch-to-zoom and one-finger pan listeners ---- */
   initZoomPan(Render);
 
-  /* ---- 3. Handle deep-link multiplayer invites (?room=XXXX) ---- */
+  /* ---- 5. Handle deep-link multiplayer invites (?room=XXXX) ---- */
   const urlParams = new URLSearchParams(window.location.search);
   const roomCode = urlParams.get('room');
   if (roomCode) {

@@ -82,7 +82,15 @@ export const Multiplayer = {
    */
   async initId() {
     return new Promise((resolve) => {
-      // Listen for auth state changes
+      // 1. First, check if we're returning from a redirect login
+      auth.getRedirectResult().catch(err => {
+        console.error("Redirect login result error:", err);
+        if (err.code === 'auth/unauthorized-domain') {
+          App.showToast("Domain not authorized. Use Firebase Console to fix.");
+        }
+      });
+
+      // 2. Listen for auth state changes
       auth.onAuthStateChanged(async (user) => {
         if (user) {
           State.userId = user.uid;
@@ -141,12 +149,15 @@ export const Multiplayer = {
   async loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
-      await auth.signInWithPopup(provider);
-      App.showToast("Logged in with Google!");
+      // Initialize the listener if not already done
+      this.initId();
+      
+      // Use signInWithRedirect instead of Popup to avoid COOP/CORS issues
+      // in modern browsers and cross-origin environments.
+      await auth.signInWithRedirect(provider);
     } catch (err) {
       console.error("Google login failed:", err);
       
-      // Specifically handle unauthorized domain error
       if (err.code === 'auth/unauthorized-domain') {
         App.showToast("Domain not authorized. Use Firebase Console to fix.");
         console.warn("ACTION REQUIRED: Add ajayparihar.github.io to Authorized Domains in Firebase.");
