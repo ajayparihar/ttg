@@ -231,4 +231,20 @@ export const State = {
    * @type {string|null}
    */
   userId: null,
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  9. AUDIO SETTINGS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Whether sound effects are enabled.
+   * Controlled via the settings panel toggle.
+   */
+  soundEnabled: true,
+
+  /**
+   * The last move position {r, c} to show the move indicator ring.
+   * Null when no moves have been made yet.
+   */
+  lastMove: null,
 };

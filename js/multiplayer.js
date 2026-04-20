@@ -327,7 +327,6 @@ export const Multiplayer = {
       Render.updateTurnIndicator();
       Render.updateScore('X');
       Render.updateScore('O');
-      App.startTimer();
       this._startSyncListeners();
     }, 100);
   },

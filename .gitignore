@@ -1,2 +1,5 @@
 .amazonq/rules/memory-bank/guidelines.md
 *.md
+node_modules/
+package-lock.json
+package.json

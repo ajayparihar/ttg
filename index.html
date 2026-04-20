@@ -28,8 +28,8 @@
      SCREEN: MAIN MENU
      ============================================================ -->
 <div id="menu-screen" class="screen active">
-  <h1 class="game-title">Tic Tac Grow</h1>
-  <p class="game-subtitle">"The Tic Tac Toe that never ends"</p>
+  <h1 class="game-title">TIC TAC GROW</h1>
+  <p class="game-subtitle">The classic, with an infinite twist.</p>
 
   <div class="menu-buttons">
     <button class="btn btn-primary" onclick="App.goToMode('single')">
@@ -41,9 +41,9 @@
       <i class="fa-solid fa-globe"></i> Play with Friend</button>
   </div>
 
-  <div style="display:flex;gap:10px;">
-    <button class="btn btn-icon" onclick="App.openSettings()"><i class="fa-solid fa-palette"></i></button>
-    <button class="btn btn-icon" onclick="App.showHowToPlay()"><i class="fa-solid fa-question-circle"></i></button>
+  <div class="menu-footer" style="display:flex;gap:16px;">
+    <button class="btn btn-icon" onclick="App.openSettings()" title="Settings"><i class="fa-solid fa-sliders"></i></button>
+    <button class="btn btn-icon" onclick="App.showHowToPlay()" title="Tutorial"><i class="fa-solid fa-graduation-cap"></i></button>
   </div>
 </div>
 
@@ -125,44 +125,11 @@
 </div>
 
 <!-- ============================================================
-     SCREEN: MODE / DURATION SELECTION
-     ============================================================ -->
-<div id="mode-screen" class="screen">
-  <div class="screen-header">
-    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')">←</button>
-    <h2 class="screen-title" id="mode-screen-title">Choose Duration</h2>
-  </div>
-
-  <div class="duration-grid">
-    <button class="btn duration-btn" data-dur="60"  onclick="App.selectDuration(60)">
-      <span class="dur-label">1</span>
-      <span class="dur-sub">minute</span>
-    </button>
-    <button class="btn duration-btn" data-dur="120" onclick="App.selectDuration(120)">
-      <span class="dur-label">2</span>
-      <span class="dur-sub">minutes</span>
-    </button>
-    <button class="btn duration-btn" data-dur="180" onclick="App.selectDuration(180)">
-      <span class="dur-label">3</span>
-      <span class="dur-sub">minutes</span>
-    </button>
-    <button class="btn duration-btn" data-dur="300" onclick="App.selectDuration(300)">
-      <span class="dur-label">5</span>
-      <span class="dur-sub">minutes</span>
-    </button>
-    <button class="btn duration-btn" data-dur="0" onclick="App.selectDuration(0)" style="grid-column: span 2;">
-      <span class="dur-label">∞</span>
-      <span class="dur-sub">unlimited</span>
-    </button>
-  </div>
-</div>
-
-<!-- ============================================================
      SCREEN: NAME INPUT
      ============================================================ -->
 <div id="name-screen" class="screen">
   <div class="screen-header">
-    <button class="btn btn-icon screen-back-btn" onclick="App.goBack(MODE ? 'mode' : 'menu')">←</button>
+    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')">←</button>
     <h2 class="screen-title">Player Names</h2>
   </div>
 
@@ -192,11 +159,11 @@
   <!-- HUD Top -->
   <div class="game-hud">
     <div class="hud-left">
-      <button class="btn btn-icon" onclick="App.pauseConfirm()" title="Menu">Menu</button>
+      <button class="btn btn-icon" onclick="App.pauseConfirm()" title="Settings"><i class="fa-solid fa-bars"></i></button>
     </div>
 
     <div class="hud-center">
-      <div class="timer-display" id="timer-display">3:00</div>
+      <div id="mode-badge" class="mode-badge">Classic</div>
       <div class="scores-bar">
         <div class="score-block x-score" id="score-x-block">
           <span id="score-x-name">Xi</span>
@@ -305,8 +272,8 @@
      ============================================================ -->
 <div class="settings-overlay" id="settings-overlay" onclick="App.closeSettings()"></div>
 <div class="settings-panel" id="settings-panel">
-  <div>
-    <div class="settings-title"><i class="fa-solid fa-cog"></i> Settings</div>
+  <div class="settings-header">
+    <div class="settings-title">Preferences</div>
   </div>
 
   <div>
@@ -326,13 +293,21 @@
       </button>
       <button class="btn theme-btn" data-theme="neon" onclick="App.setTheme('neon')">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF00FF,#00FFFF)"></div>
-        <i class="fa-solid fa-bolt"></i>
+        <i class="fa-solid fa-flask"></i>
       </button>
       <button class="btn theme-btn" data-theme="sunset" onclick="App.setTheme('sunset')">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#FF4500,#FFC200)"></div>
         <i class="fa-solid fa-sun"></i>
       </button>
     </div>
+  </div>
+
+  <div>
+    <div class="settings-section-title">Sound</div>
+    <button class="btn btn-toggle" id="sound-toggle-btn" onclick="App.toggleSound()">
+      <i class="fa-solid fa-volume-high" id="sound-icon"></i>
+      <span id="sound-label">Sound On</span>
+    </button>
   </div>
 
   <div>

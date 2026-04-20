@@ -48,9 +48,22 @@ export function randomInt(min, max) {
  * @param {T[]} array - The source array.
  * @returns {T|null} A randomly selected element, or `null`.
  */
-export function randomChoice(array) {
-  if (!array.length) return null;
-  return array[Math.floor(Math.random() * array.length)];
+export function randomChoice(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * Triggers haptic feedback on supported mobile devices.
+ * @param {number} [duration=10] - Vibration duration in milliseconds.
+ */
+export function hapticFeedback(duration = 10) {
+  if (navigator.vibrate && typeof navigator.vibrate === 'function') {
+    try {
+      navigator.vibrate(duration);
+    } catch (_) {
+      // Ignore if vibration fails (e.g., user disabled it)
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

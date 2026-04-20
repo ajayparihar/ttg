@@ -33,6 +33,7 @@ import { launchConfetti } from './confetti.js';
 import { App } from './app.js';
 import { makeCrownSvg } from './svg.js';
 import { Multiplayer } from './multiplayer.js';
+import { hapticFeedback } from './utils.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Input handling
@@ -122,7 +123,11 @@ export function makeMove(r, c, isAI = false) {
   // ── Place the mark ─────────────────────────────────────────────────
   const player       = State.currentPlayer;
   State.grid[r][c]   = player;
+  State.lastMove     = { r, c, player };
   Render.updateCell(r, c, player);
+
+  // Haptic feedback on mobile devices (10ms light tap)
+  hapticFeedback(10);
 
   // ── Delegate to board-size-specific outcome processor ──────────────
   if (State.gridSize === 3) {
@@ -224,6 +229,12 @@ function _processMoveOnLargeGrid(r, c, player) {
     State.scores[player] += result.points;
     Render.updateScore(player);
     Render.drawScoreStrikes(result.chains, player);
+
+    // Show floating score text at the last move position
+    showFloatingScore(r, c, result.points, player);
+
+    // Stronger haptic feedback for scoring moves
+    hapticFeedback(20);
 
     // Notify the player with a toast for notable scores
     if (result.points >= 20) {
@@ -477,13 +488,7 @@ function _renderGameOverScreen(winner, reason) {
     goScores.style.display = 'flex';
   }
 
-  // ── Meta line (grid size + duration) ───────────────────────────────
-  const durLabel =
-    State.duration === 0  ? 'Unlimited' :
-    State.duration === 60 ? '1 min'     :
-    `${State.duration / 60} min`;
-
-  goMeta.textContent = `${State.gridSize}×${State.gridSize} grid · ${durLabel}`;
+  goMeta.textContent = `${State.gridSize}×${State.gridSize} grid`;
 }
 
 /**
@@ -517,4 +522,42 @@ function _persistStats() {
 export function clearTimers() {
   if (State.timerInterval) { clearInterval(State.timerInterval); State.timerInterval = null; }
   if (State.aiTimeout)     { clearTimeout(State.aiTimeout);      State.aiTimeout     = null; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Floating score animation
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Shows a floating "+N" text animation at the specified cell.
+ * @param {number} r - Row of the cell.
+ * @param {number} c - Column of the cell.
+ * @param {number} points - Points to display.
+ * @param {'X'|'O'} player - The scoring player.
+ */
+function showFloatingScore(r, c, points, player) {
+  const cell = Render.getCell(r, c);
+  if (!cell) return;
+
+  const floatEl = document.createElement('div');
+  floatEl.className = 'floating-score';
+  floatEl.textContent = `+${points}`;
+  floatEl.style.color = player === 'X' ? 'var(--color-x)' : 'var(--color-o)';
+
+  // Position at the center of the cell using relative percentages to handle zoom
+  const cellSize = Render.cellSize || 60;
+  const gap = 6;
+  const padding = 6;
+
+  // Calculate position based on grid coordinates (works with zoom/pan)
+  const x = padding + c * (cellSize + gap) + cellSize / 2;
+  const y = padding + r * (cellSize + gap) + cellSize / 2;
+
+  floatEl.style.left = `${x}px`;
+  floatEl.style.top = `${y}px`;
+
+  document.getElementById('game-grid').appendChild(floatEl);
+
+  // Remove after animation completes
+  setTimeout(() => floatEl.remove(), 1200);
 }

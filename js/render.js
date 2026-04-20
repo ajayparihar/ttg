@@ -30,6 +30,7 @@ import {
   STRIKE_CURVE_JITTER
 } from './constants.js';
 import { makeXSvg, makeOSvg, makeGhostX, makeGhostO } from './svg.js';
+import { resetKeyboardFocus } from './main.js';
 
 // ---------------------------------------------------------------------------
 // Grid layout constants (shared by buildGrid and redrawAllStrikes)
@@ -121,12 +122,19 @@ export const Render = {
     const totalSize = (this.cellSize * gridSize) + (gap * (gridSize - 1)) + (padding * 2);
     gridEl.style.gap                 = `${gap}px`;
     gridEl.style.padding             = `${padding}px`;
-    gridEl.style.gridTemplateColumns = `repeat(${gridSize}, ${this.cellSize}px)`;
+    // Use 1fr to evenly distribute space and avoid sub-pixel gaps
+    gridEl.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+    gridEl.style.gridTemplateRows    = `repeat(${gridSize}, 1fr)`;
     gridEl.style.width               = `${totalSize}px`;
     gridEl.style.height              = `${totalSize}px`;
 
     // --- Rebuild all cell elements from scratch ---
     gridEl.innerHTML = '';
+
+    // Add coordinate labels for 5x5+ grids
+    if (gridSize >= 5) {
+      this._addGridCoordinates(gridEl, gridSize, gap, padding);
+    }
 
     for (let r = 0; r < gridSize; r++) {
       for (let c = 0; c < gridSize; c++) {
@@ -134,6 +142,9 @@ export const Render = {
         cell.className   = 'cell';
         cell.dataset.r   = r;
         cell.dataset.c   = c;
+        cell.setAttribute('role', 'button');
+        cell.setAttribute('aria-label', `Row ${r + 1}, Column ${c + 1}, empty`);
+        cell.setAttribute('tabindex', '-1');
 
         // Flag cells added by grid expansion for entrance animation
         const isNew = (r >= oldSize || c >= oldSize);
@@ -170,6 +181,56 @@ export const Render = {
 
     // Redraw all persistent strike lines after the DOM rebuild
     this.redrawAllStrikes();
+
+    // Reset keyboard navigation focus since DOM was rebuilt
+    resetKeyboardFocus();
+  },
+
+  /**
+   * Adds A1, B2 style coordinate labels around the grid edges.
+   * Only shown for 5x5 and larger grids to help with communication.
+   * @private
+   */
+  _addGridCoordinates(gridEl, gridSize, gap, padding) {
+    // Column labels (A, B, C...) at top
+    for (let c = 0; c < gridSize; c++) {
+      const label = document.createElement('div');
+      label.className = 'grid-coord grid-coord-col';
+      label.textContent = this._numberToLetter(c);
+      label.style.position = 'absolute';
+      label.style.top = `${padding - 18}px`;
+      label.style.left = `${padding + c * (this.cellSize + gap) + this.cellSize / 2}px`;
+      label.style.transform = 'translateX(-50%)';
+      gridEl.appendChild(label);
+    }
+
+    // Row labels (1, 2, 3...) at left
+    for (let r = 0; r < gridSize; r++) {
+      const label = document.createElement('div');
+      label.className = 'grid-coord grid-coord-row';
+      label.textContent = (r + 1).toString();
+      label.style.position = 'absolute';
+      label.style.left = `${padding - 20}px`;
+      label.style.top = `${padding + r * (this.cellSize + gap) + this.cellSize / 2}px`;
+      label.style.transform = 'translateY(-50%)';
+      gridEl.appendChild(label);
+    }
+  },
+
+  /**
+   * Converts 0-indexed number to spreadsheet-style column letter(s).
+   * 0=A, 25=Z, 26=AA, 27=AB, etc.
+   * @private
+   */
+  _numberToLetter(n) {
+    let result = '';
+    n++; // Convert to 1-based
+    while (n > 0) {
+      n--; // Adjust because A=1 in this system
+      result = String.fromCharCode(65 + (n % 26)) + result;
+      n = Math.floor(n / 26);
+    }
+    return result;
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -202,6 +263,8 @@ export const Render = {
     }
 
     cell.classList.add(`${player.toLowerCase()}-marked`, 'marked');
+    cell.setAttribute('aria-label', `Row ${r + 1}, Column ${c + 1}, ${player === 'X' ? 'X mark' : 'O mark'}`);
+    cell.setAttribute('aria-pressed', 'true');
 
     // Detach click listener — this cell is now permanently occupied
     if (onCellClick) cell.removeEventListener('click', onCellClick);
@@ -373,30 +436,6 @@ export const Render = {
     block.classList.remove('score-flash');
     void block.offsetWidth;   // Force reflow — intentional layout thrash
     block.classList.add('score-flash');
-  },
-
-  /**
-   * Formats and renders the countdown timer display.
-   * Adds a `warning` CSS class when ≤ 30 seconds remain.
-   * Hides the element entirely for unlimited (duration = 0) games.
-   */
-  updateTimer() {
-    const el = document.getElementById('timer-display');
-
-    if (State.duration === 0) {
-      el.classList.add('hidden');
-      return;
-    }
-
-    el.classList.remove('hidden');
-
-    const m = Math.floor(State.timeLeft / 60);
-    const s = State.timeLeft % 60;
-    el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
-
-    // Visual urgency when time is running low
-    if (State.timeLeft <= 30) el.classList.add('warning');
-    else                      el.classList.remove('warning');
   },
 
   /**
@@ -604,4 +643,5 @@ export const Render = {
       resetBtn.style.display = level > 1.001 ? 'flex' : 'none';
     }
   },
+
 };

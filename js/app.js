@@ -42,7 +42,7 @@ export const App = {
    * to {@link State.duration}.
    * @type {number}
    */
-  selectedDuration: 180,
+  selectedDuration: 0,
 
   // ─────────────────────────────────────────────────────────────────────
   //  Mode defaults
@@ -199,6 +199,7 @@ export const App = {
     State.panY          = 0;
     State.paused        = false;
     State.lastGridSize  = 3;
+    State.lastMove      = null;
 
     // ── Sync HUD with new State ──────────────────────────────────────
     Render.updateScore('X');
@@ -222,8 +223,7 @@ export const App = {
       Render.buildGrid(3);
       Render.setZoomDisplay(1.0);
       Render.updateTurnIndicator();
-      Render.updateTimer();
-      this.startTimer();
+      Render.updateTurnIndicator();
 
       // If the AI was randomly chosen to go first, trigger it immediately
       if (State.mode === 'single' && State.currentPlayer === 'O') {
@@ -234,48 +234,7 @@ export const App = {
     }, 100);
   },
 
-  /**
-   * Starts the countdown interval that ticks every second.
-   *
-   * When the timer reaches zero, the game ends:
-   *  - On a clean 3×3 with both scores at 0 → draw.
-   *  - Otherwise → the player with the higher score wins.
-   *
-   * No-ops for unlimited (`duration === 0`) games.
-   */
-  startTimer() {
-    if (State.duration === 0) {
-      document.getElementById('timer-display').classList.add('hidden');
-      return;
-    }
 
-    document.getElementById('timer-display').classList.remove('hidden');
-    Render.updateTimer();
-
-    State.timerInterval = setInterval(() => {
-      // Don't tick while the game is paused or already over
-      if (!State.gameActive || State.paused) return;
-
-      State.timeLeft--;
-      Render.updateTimer();
-
-      if (State.timeLeft <= 0) {
-        clearInterval(State.timerInterval);
-
-        // Determine the winner when time expires
-        const noScore = State.gridSize === 3 && State.scores.X === 0 && State.scores.O === 0;
-        if (noScore) {
-          // Clean 3×3 board with no points scored → fair draw
-          endGame('draw', 'timeout');
-        } else {
-          const winner =
-            State.scores.X > State.scores.O ? 'X'    :
-            State.scores.O > State.scores.X ? 'O'    : 'draw';
-          endGame(winner === 'draw' ? 'draw' : winner, 'timeout');
-        }
-      }
-    }, 1000);
-  },
 
   // ─────────────────────────────────────────────────────────────────────
   //  Undo (one-shot per game)
@@ -311,6 +270,7 @@ export const App = {
     State.gridSize      = snap.gridSize;
     State.undoUsed      = true;
     State.undoSnapshot  = null;
+    State.lastMove      = null;
 
     // Grey out the undo button — one use only
     const undoBtn = document.getElementById('undo-btn');
@@ -448,7 +408,10 @@ export const App = {
   },
 
   /** Slides the settings panel in from the right. */
-  openSettings() { this._togglePanel('settings-panel', 'settings-overlay', true); },
+  openSettings() {
+    this._togglePanel('settings-panel', 'settings-overlay', true);
+    this._updateSoundButton(); // Ensure sound button shows current state
+  },
 
   /** Slides the settings panel out. */
   closeSettings() { this._togglePanel('settings-panel', 'settings-overlay', false); },
@@ -488,6 +451,43 @@ export const App = {
 
     try { localStorage.setItem('ttg_theme', name); } catch (_) {}
     this.showToast(`Theme: ${name.charAt(0).toUpperCase() + name.slice(1)}`);
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  //  Sound toggle
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Toggles sound effects on/off and persists the setting.
+   */
+  toggleSound() {
+    State.soundEnabled = !State.soundEnabled;
+    this._updateSoundButton();
+
+    try { localStorage.setItem('ttg_sound', State.soundEnabled ? 'on' : 'off'); } catch (_) {}
+    this.showToast(State.soundEnabled ? 'Sound On' : 'Sound Muted');
+  },
+
+  /**
+   * Updates the sound toggle button UI to reflect current state.
+   * @private
+   */
+  _updateSoundButton() {
+    const btn = document.getElementById('sound-toggle-btn');
+    const icon = document.getElementById('sound-icon');
+    const label = document.getElementById('sound-label');
+
+    if (!btn || !icon || !label) return;
+
+    if (State.soundEnabled) {
+      btn.classList.remove('muted');
+      icon.className = 'fa-solid fa-volume-high';
+      label.textContent = 'Sound On';
+    } else {
+      btn.classList.add('muted');
+      icon.className = 'fa-solid fa-volume-xmark';
+      label.textContent = 'Sound Off';
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -647,13 +647,34 @@ export const App = {
   // ─────────────────────────────────────────────────────────────────────
 
   /**
-   * Restores persisted user preferences (e.g. theme) on application
+   * Restores persisted user preferences (e.g. theme, sound) on application
    * startup.  Silently swallows any storage errors.
+   * Auto-detects system dark/light preference if no saved theme.
    */
   loadSaved() {
     try {
-      const theme = localStorage.getItem('ttg_theme') || 'default';
-      this.setTheme(theme);
+      const savedTheme = localStorage.getItem('ttg_theme');
+      if (savedTheme) {
+        this.setTheme(savedTheme);
+      } else {
+        // Auto-detect system preference on first visit
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+
+        if (prefersLight) {
+          // Default is already light-friendly, no change needed
+          this.setTheme('default');
+        }
+        // If prefers dark or no preference, default dark theme is already set
+      }
+    } catch (_) {}
+
+    try {
+      const sound = localStorage.getItem('ttg_sound');
+      if (sound === 'off') {
+        State.soundEnabled = false;
+      }
+      this._updateSoundButton();
     } catch (_) {}
   },
 };

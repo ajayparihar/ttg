@@ -19,6 +19,7 @@ import { State } from './state.js';
 import { Render } from './render.js';
 import { initZoomPan } from './zoom.js';
 import { Multiplayer } from './multiplayer.js';
+import { makeMove } from './game.js';
 
 // ---------------------------------------------------------------------------
 // Bridge for remaining inline `onclick` handlers in the HTML.
@@ -97,6 +98,126 @@ document.addEventListener('DOMContentLoaded', () => {
     // Escape → open the pause dialog (only while the game is actively running)
     if (e.key === 'Escape' && App.currentScreen === 'game' && !State.paused) {
       App.pauseConfirm();
+      return;
+    }
+
+    // Grid keyboard navigation (only when game is active and not typing in an input)
+    const activeTag = document.activeElement?.tagName;
+    const isTyping = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+    if (App.currentScreen === 'game' && State.gameActive && !State.paused && !isTyping) {
+      handleGridNavigation(e);
     }
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Grid Keyboard Navigation
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Current keyboard-focused cell position. Null when not using keyboard nav. */
+let focusedCell = null;
+
+/**
+ * Handles arrow key navigation and Enter to place marks.
+ * @param {KeyboardEvent} e
+ */
+function handleGridNavigation(e) {
+  const size = State.gridSize;
+
+  // Initialize focus to center if not set
+  if (!focusedCell) {
+    const mid = Math.floor(size / 2);
+    focusedCell = { r: mid, c: mid };
+    updateFocusIndicator();
+    return;
+  }
+
+  let moved = false;
+
+  switch (e.key) {
+    case 'ArrowUp':
+      e.preventDefault();
+      focusedCell.r = Math.max(0, focusedCell.r - 1);
+      moved = true;
+      break;
+    case 'ArrowDown':
+      e.preventDefault();
+      focusedCell.r = Math.min(size - 1, focusedCell.r + 1);
+      moved = true;
+      break;
+    case 'ArrowLeft':
+      e.preventDefault();
+      focusedCell.c = Math.max(0, focusedCell.c - 1);
+      moved = true;
+      break;
+    case 'ArrowRight':
+      e.preventDefault();
+      focusedCell.c = Math.min(size - 1, focusedCell.c + 1);
+      moved = true;
+      break;
+    case 'Enter':
+    case ' ': // Space also works for placement
+      e.preventDefault();
+      // Only place if cell is empty and it's player's turn
+      if (isValidMove(focusedCell.r, focusedCell.c)) {
+        makeMove(focusedCell.r, focusedCell.c);
+      }
+      return;
+  }
+
+  if (moved) {
+    updateFocusIndicator();
+    scrollCellIntoView(focusedCell.r, focusedCell.c);
+  }
+}
+
+/**
+ * Checks if a move is valid at the given position.
+ */
+function isValidMove(r, c) {
+  if (!State.gameActive || State.paused || State.isProcessing) return false;
+  if (State.grid[r][c]) return false; // Already occupied
+  if (State.mode === 'single' && State.currentPlayer === 'O') return false;
+  if (State.isMultiplayer && State.currentPlayer !== State.playerRole) return false;
+  return true;
+}
+
+/**
+ * Updates the visual focus indicator on cells.
+ */
+function updateFocusIndicator() {
+  // Remove existing focus indicators
+  document.querySelectorAll('.cell-focus').forEach(el => el.classList.remove('cell-focus'));
+
+  if (!focusedCell) return;
+
+  const cell = Render.getCell(focusedCell.r, focusedCell.c);
+  if (cell && !cell.classList.contains('marked')) {
+    cell.classList.add('cell-focus');
+    cell.setAttribute('aria-selected', 'true');
+  }
+}
+
+/**
+ * Scrolls the focused cell into view if zoomed/panned.
+ */
+function scrollCellIntoView(r, c) {
+  const cell = Render.getCell(r, c);
+  if (cell) {
+    cell.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  }
+}
+
+/**
+ * Resets keyboard focus (call when grid rebuilds or game ends).
+ */
+export function resetKeyboardFocus() {
+  focusedCell = null;
+  document.querySelectorAll('.cell-focus').forEach(el => {
+    el.classList.remove('cell-focus');
+    el.removeAttribute('aria-selected');
+  });
+}
+
+// Expose for other modules
+window.resetKeyboardFocus = resetKeyboardFocus;
