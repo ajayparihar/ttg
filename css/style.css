@@ -161,53 +161,49 @@ body {
 /* ============================================================
    SPLASH SCREEN
    ============================================================ */
+/* ============================================================
+   SPLASH SCREEN
+   ============================================================ */
 .splash-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #050505;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  transition: opacity 0.8s var(--smooth), visibility 0.8s;
+  /* position, dimensions, background handled by critical CSS in head */
 }
 
 .splash-screen.fade-out {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transform: scale(1.1); /* Subtle zoom out on exit */
 }
 
 .splash-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  animation: splashIn 1.2s var(--spring) forwards;
+  gap: 24px;
+  /* initial animation handled in head */
 }
 
 .splash-logo {
-  width: 120px;
-  height: 120px;
-  border-radius: 30px;
+  width: 130px;
+  height: 130px;
+  border-radius: 32px;
   background: var(--bg-accent);
-  padding: 10px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(var(--color-x-rgb), 0.1);
+  padding: 12px;
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(var(--color-x-rgb), 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: rotate(-5deg);
-  animation: logoPop 1.5s var(--spring) infinite alternate;
+  transform: rotate(-3deg);
+  animation: logoFloat 2.5s ease-in-out infinite alternate;
 }
 
 .splash-logo img {
-  width: 85%;
-  height: 85%;
+  width: 90%;
+  height: 90%;
   object-fit: contain;
+  filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
 }
 
 .splash-details {
@@ -216,55 +212,68 @@ body {
 
 .splash-title {
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: 40px;
   font-weight: 900;
-  letter-spacing: 2px;
+  letter-spacing: 4px;
   background: linear-gradient(135deg, var(--color-x), var(--color-o));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin-bottom: 4px;
+  text-shadow: 0 0 20px rgba(var(--color-x-rgb), 0.2);
+}
+
+.splash-footer {
+  position: absolute;
+  bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
 }
 
 .splash-dev {
   font-family: var(--font);
-  font-size: 14px;
+  font-size: 10px; /* Reduced from 14px */
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 4px;
-  color: var(--fg-secondary);
+  letter-spacing: 2px; /* Reduced from 4px */
+  color: var(--fg-muted);
   opacity: 0;
-  animation: fadeIn 0.8s ease 0.6s forwards;
+  animation: fadeIn 0.8s ease 1s forwards;
 }
 
 .splash-loader {
-  position: absolute;
-  bottom: 60px;
-  width: 120px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 2px;
+  width: 160px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
   overflow: hidden;
+  box-shadow: inset 0 0 5px rgba(0,0,0,0.2);
 }
 
 .loader-bar {
   width: 0%;
   height: 100%;
-  background: linear-gradient(90deg, var(--color-x), var(--color-o));
-  animation: loadProgress 2s ease-in-out forwards;
+  background: linear-gradient(90deg, var(--color-x), var(--accent), var(--color-o));
+  background-size: 200% 100%;
+  animation: 
+    loadProgress 2.2s cubic-bezier(0.65, 0, 0.35, 1) forwards,
+    loaderShimmer 2s linear infinite;
 }
 
-@keyframes splashIn {
-  from { opacity: 0; transform: scale(0.9) translateY(20px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
+@keyframes logoFloat {
+  from { transform: rotate(-3deg) translateY(0); }
+  to   { transform: rotate(3deg) translateY(-8px); }
 }
 
-@keyframes logoPop {
-  from { transform: rotate(-5deg) scale(1); }
-  to   { transform: rotate(5deg) scale(1.05); }
+@keyframes loaderShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @keyframes fadeIn {
-  to { opacity: 1; }
+  to { opacity: 0.6; }
 }
 
 @keyframes loadProgress {

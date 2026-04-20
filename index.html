@@ -25,6 +25,33 @@
 
   <!-- Stylesheet -->
   <link rel="stylesheet" href="css/style.css">
+
+  <!-- Critical Splash Styles (Prevent Flicker) -->
+  <style>
+    .splash-screen {
+      position: fixed;
+      inset: 0;
+      background: #050505;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s;
+    }
+    .splash-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      opacity: 0;
+      transform: scale(0.95);
+      animation: splashFadeIn 0.8s ease forwards 0.2s;
+    }
+    @keyframes splashFadeIn {
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
 </head>
 <body>
 
@@ -34,15 +61,17 @@
 <div id="splash-screen" class="splash-screen">
   <div class="splash-content">
     <div class="splash-logo">
-      <img src="favicon.png" alt="Tic Tac Grow Logo" id="splash-img">
+      <img src="favicon.png" alt="Tic Tac Grow Logo" id="splash-img" width="130" height="130">
     </div>
     <div class="splash-details">
       <h1 class="splash-title">TIC TAC GROW</h1>
-      <p class="splash-dev">By Bheb Developer</p>
     </div>
   </div>
-  <div class="splash-loader">
-    <div class="loader-bar"></div>
+  <div class="splash-footer">
+    <p class="splash-dev">By Bheb Developer</p>
+    <div class="splash-loader">
+      <div class="loader-bar"></div>
+    </div>
   </div>
 </div>
 
