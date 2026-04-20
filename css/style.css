@@ -220,7 +220,7 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   margin-bottom: 4px;
-  text-shadow: 0 0 20px rgba(var(--color-x-rgb), 0.2);
+  text-shadow: none;
 }
 
 .splash-footer {
@@ -388,12 +388,12 @@ body {
   color: white;
   font-size: 18px;
   font-weight: 700;
-  box-shadow: 0 10px 25px -5px rgba(var(--color-x-rgb), 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--color-x), var(--color-o));
-  box-shadow: 0 15px 35px -8px rgba(var(--color-x-rgb), 0.5);
+  box-shadow: var(--shadow-md);
 }
 
 .btn-primary:hover::after { opacity: 0.1; }
@@ -571,7 +571,7 @@ body {
 
 .timer-display.warning { 
   color: var(--color-x); 
-  text-shadow: 0 0 15px rgba(var(--color-x-rgb), 0.4);
+  text-shadow: none;
   animation: timerPulse 0.8s ease infinite alternate; 
 }
 .timer-display.hidden { visibility: hidden; }
@@ -665,14 +665,12 @@ body {
   background: var(--color-x-light);
   color: var(--color-x);
   border: 1px solid var(--color-x);
-  box-shadow: 0 0 12px var(--color-x-glow);
 }
 
 .turn-indicator.turn-o {
   background: var(--color-o-light);
   color: var(--color-o);
   border: 1px solid var(--color-o);
-  box-shadow: 0 0 12px var(--color-o-glow);
 }
 
 /* ============================================================
@@ -708,12 +706,12 @@ body {
 /* Board border tinted by current player's colour */
 .game-grid.turn-x {
   border: 1px solid rgba(var(--color-x-rgb), 0.4);
-  box-shadow: 0 0 40px -10px rgba(var(--color-x-rgb), 0.2), var(--shadow-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 .game-grid.turn-o {
   border: 1px solid rgba(var(--color-o-rgb), 0.4);
-  box-shadow: 0 0 40px -10px rgba(var(--color-o-rgb), 0.2), var(--shadow-lg);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Grid coordinate labels (A1, B2 style) for 5x5+ boards */
@@ -825,8 +823,8 @@ body {
 }
 
 /* X & O colors */
-.x-mark { color: var(--color-x); filter: drop-shadow(0 0 8px var(--color-x-glow)); }
-.o-mark { color: var(--color-o); filter: drop-shadow(0 0 8px var(--color-o-glow)); }
+.x-mark { color: var(--color-x); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+.o-mark { color: var(--color-o); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
 
 /* Win strike colors */
 .win-strike-line.x-strike { color: var(--color-x); }
@@ -875,7 +873,7 @@ body {
   stroke-dasharray: 5000;
   stroke-dashoffset: 5000;
   animation: drawStrike 0.5s ease-out forwards;
-  filter: drop-shadow(0 0 16px currentColor);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
 }
 
 @keyframes drawStrike {
@@ -1038,12 +1036,10 @@ body {
 
 .winner-initial.x-color { 
   background: var(--color-x); 
-  box-shadow: 0 0 25px var(--color-x-glow);
 }
 
 .winner-initial.o-color { 
   background: var(--color-o); 
-  box-shadow: 0 0 25px var(--color-o-glow);
 }
 
 .winner-crown {
@@ -1076,7 +1072,7 @@ body {
 .gameover-title.win-x { color: var(--color-x); }
 .gameover-title.win-o { color: var(--color-o); }
 .gameover-title.draw  { color: var(--fg-secondary); }
-.gameover-title.defeat { color: #ff4444; text-shadow: 0 0 10px rgba(255, 68, 68, 0.5); }
+.gameover-title.defeat { color: #ff4444; text-shadow: none; }
 
 .score-name-cell {
   display: flex;
