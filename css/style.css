@@ -304,13 +304,6 @@ body {
 /* ============================================================
    SPLASH SCREEN
    ============================================================ */
-/* ============================================================
-   SPLASH SCREEN
-   ============================================================ */
-.splash-screen {
-  /* position, dimensions, background handled by critical CSS in head */
-}
-
 .splash-screen.fade-out {
   opacity: 0;
   visibility: hidden;
@@ -1092,11 +1085,6 @@ body {
 @keyframes sparkleAnim {
   0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
   100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0); opacity: 0; }
-}
-  gap: 6px;
-  font-size: 13px;
-  color: var(--fg-secondary);
-  font-style: italic;
 }
 
 .thinking-dots span {
@@ -2573,4 +2561,34 @@ body {
 .clear-input-btn:hover {
   opacity: 1;
   color: var(--color-x);
+}
+
+/* ============================================================
+   ACCESSIBILITY - REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .mark-svg {
+    animation: none !important;
+  }
+
+  .confetti-piece {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  .floating-score,
+  .score-sparkle {
+    animation: none !important;
+    opacity: 0 !important;
+  }
 }

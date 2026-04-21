@@ -132,3 +132,32 @@ export const STRIKE_CURVE_BASE = 18;
 
 /** Maximum random curvature jitter on top of the base (±px). */
 export const STRIKE_CURVE_JITTER = 5;
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ANIMATION DURATIONS (ms) - Sync with CSS animations
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Mark appearance animation duration (matches CSS markAppear). */
+export const ANIM_MARK_APPEAR_MS = 300;
+
+/** Grid expansion animation duration (matches CSS gridExpand). */
+export const ANIM_GRID_EXPAND_MS = 800;
+
+/** Win strike line draw animation (matches CSS drawStrike). */
+export const ANIM_STRIKE_DRAW_MS = 500;
+
+/** Floating score animation duration (matches CSS floatUp). */
+export const ANIM_FLOAT_SCORE_MS = 1200;
+
+/** Sparkle particle lifetime. */
+export const ANIM_SPARKLE_MS = 800;
+
+/** Grid expansion delay before DOM rebuild. */
+export const GRID_EXPAND_DELAY_MS = 300;
+
+/** Delay after win strike before showing game over. */
+export const WIN_END_DELAY_MS = 350;
+
+/** AI thinking delay range (min, max in ms). */
+export const AI_THINKING_DELAY_MIN_MS = 150;
+export const AI_THINKING_DELAY_MAX_MS = 400;

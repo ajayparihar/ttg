@@ -27,11 +27,14 @@ import {
   STRIKE_OVERSHOOT_JITTER,
   STRIKE_POS_JITTER,
   STRIKE_CURVE_BASE,
-  STRIKE_CURVE_JITTER
+  STRIKE_CURVE_JITTER,
+  GRID_EXPAND_DELAY_MS
 } from './constants.js';
 import { makeXSvg, makeOSvg, makeGhostX, makeGhostO } from './svg.js';
 import { resetKeyboardFocus } from './main.js';
 import { i18n } from './i18n.js';
+import { getPlayerColor } from './utils/colors.js';
+import { restartAnimation, autoRemoveAfterAnimation } from './utils/animation.js';
 
 // ---------------------------------------------------------------------------
 // Grid layout constants (shared by buildGrid and redrawAllStrikes)
@@ -403,10 +406,8 @@ export const Render = {
       nameEl.textContent = State.names[player];
     }
 
-    // Restart the flash animation by forcing a browser reflow
-    block.classList.remove('score-flash');
-    void block.offsetWidth;   // Force reflow — intentional layout thrash
-    block.classList.add('score-flash');
+    // Restart the flash animation
+    restartAnimation(block, 'score-flash');
   },
 
   /**
@@ -580,13 +581,95 @@ export const Render = {
 
   /**
    * Briefly animates the grid element when the board size increases.
-   * The `grid-expanding` class triggers a CSS scale pulse, removed
-   * after 200 ms.
+   * The `grid-expanding` class triggers a CSS scale pulse.
    */
   animateGridExpand() {
     const gridEl = document.getElementById('game-grid');
     gridEl.classList.add('grid-expanding');
-    setTimeout(() => gridEl.classList.remove('grid-expanding'), 200);
+    setTimeout(() => gridEl.classList.remove('grid-expanding'), GRID_EXPAND_DELAY_MS);
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  //  Score effects
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Cached reference to the game grid element for effects.
+   * @private
+   */
+  _gridEl: null,
+
+  /**
+   * Gets the cached game grid element, initializing cache if needed.
+   * @private
+   * @returns {HTMLElement}
+   */
+  _getGridEl() {
+    if (!this._gridEl) {
+      this._gridEl = document.getElementById('game-grid');
+    }
+    return this._gridEl;
+  },
+
+  /**
+   * Shows a floating "+N" text animation at the specified cell.
+   * @param {number} r - Row of the cell.
+   * @param {number} c - Column of the cell.
+   * @param {number} points - Points to display.
+   * @param {'X'|'O'} player - The scoring player.
+   */
+  showFloatingScore(r, c, points, player) {
+    const gridEl = this._getGridEl();
+
+    const floatEl = document.createElement('div');
+    floatEl.className = 'floating-score';
+    floatEl.textContent = `+${points}`;
+    floatEl.style.color = getPlayerColor(player);
+
+    // Position at the center of the cell using grid coordinates
+    const cellSize = this.cellSize || MIN_CELL_PX;
+    const x = GRID_PADDING + c * (cellSize + GRID_GAP) + cellSize / 2;
+    const y = GRID_PADDING + r * (cellSize + GRID_GAP) + cellSize / 2;
+
+    floatEl.style.left = `${x}px`;
+    floatEl.style.top = `${y}px`;
+
+    gridEl.appendChild(floatEl);
+
+    // Auto-remove after animation completes
+    autoRemoveAfterAnimation(floatEl, 'floatUp');
+
+    // Show sparkle particles
+    this._showSparkles(x, y, player);
+  },
+
+  /**
+   * Shows sparkle particles at the specified position.
+   * @private
+   * @param {number} x - X coordinate in pixels.
+   * @param {number} y - Y coordinate in pixels.
+   * @param {'X'|'O'} player - The player color to use.
+   */
+  _showSparkles(x, y, player) {
+    const gridEl = this._getGridEl();
+    const particleCount = 8;
+
+    for (let i = 0; i < particleCount; i++) {
+      const p = document.createElement('div');
+      p.className = 'score-sparkle';
+      p.style.backgroundColor = getPlayerColor(player);
+      p.style.left = `${x}px`;
+      p.style.top = `${y}px`;
+
+      // Random trajectory
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 30 + Math.random() * 40;
+      p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+      p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+
+      gridEl.appendChild(p);
+      autoRemoveAfterAnimation(p, 'sparkleAnim');
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────

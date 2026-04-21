@@ -7,6 +7,8 @@
  * randomised CSS-animated confetti pieces styled in the winner's colour
  * palette.  The container is auto-cleaned after the animation finishes.
  *
+ * Respects prefers-reduced-motion for accessibility.
+ *
  * @module confetti
  */
 
@@ -15,17 +17,33 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Player-keyed colour palettes.
- * Three shades per player create a richer visual burst.
+ * Check if user prefers reduced motion.
+ * @returns {boolean}
+ */
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * Player-keyed colour CSS variable names for theme-aware colors.
  * @type {Record<string, string[]>}
  */
-const CONFETTI_COLORS = {
-  X: ['#FF3366', '#FF6699', '#FFB3C6'],   // Warm reds / pinks
-  O: ['#3366FF', '#6699FF', '#B3C6FF'],   // Cool blues
+const CONFETTI_COLOR_VARS = {
+  X: ['var(--color-x)', 'var(--color-x-light)'],
+  O: ['var(--color-o)', 'var(--color-o-light)'],
 };
 
-/** Total number of confetti pieces spawned per win celebration. */
-const CONFETTI_COUNT = 60;
+/** Default fallback colors if CSS variables aren't available. */
+const CONFETTI_FALLBACK_COLORS = {
+  X: ['#FF3366', '#FF6699', '#FFB3C6'],
+  O: ['#3366FF', '#6699FF', '#B3C6FF'],
+};
+
+/** Base number of confetti pieces - scaled by viewport size. */
+const CONFETTI_BASE_COUNT = 40;
+
+/** Maximum confetti pieces for large screens. */
+const CONFETTI_MAX_COUNT = 80;
 
 /**
  * Milliseconds after which the confetti container is emptied.
@@ -41,9 +59,12 @@ const CONFETTI_LIFETIME_MS = 4000;
  * Fills the `#confetti-container` with randomised CSS-animated confetti
  * pieces, then clears the container after they finish falling.
  *
+ * Respects prefers-reduced-motion. Uses responsive particle count based on
+ * viewport size and theme-aware colors from CSS variables.
+ *
  * Each piece receives random:
  *  - **Horizontal position** across the full viewport width.
- *  - **Colour** from the winning player's palette.
+ *  - **Colour** from the winning player's palette (CSS variables with fallback).
  *  - **Size** between 6 px and 16 px.
  *  - **Shape** (50 % circle, 50 % rounded rectangle).
  *  - **Animation duration** between 1.5 s and 3.5 s.
@@ -55,16 +76,36 @@ export function launchConfetti(player) {
   const container = document.getElementById('confetti-container');
   container.innerHTML = '';   // Clear any leftover pieces from a previous win
 
-  // Fall back to X's palette if an unexpected value is passed
-  const palette = CONFETTI_COLORS[player] || CONFETTI_COLORS.X;
+  // Respect prefers-reduced-motion
+  if (prefersReducedMotion()) {
+    return;
+  }
 
-  for (let i = 0; i < CONFETTI_COUNT; i++) {
+  // Calculate responsive particle count based on viewport area
+  const viewportArea = window.innerWidth * window.innerHeight;
+  const baseArea = 1920 * 1080; // Full HD baseline
+  const scaleFactor = Math.min(1, Math.sqrt(viewportArea / baseArea));
+  const particleCount = Math.floor(CONFETTI_BASE_COUNT + (CONFETTI_MAX_COUNT - CONFETTI_BASE_COUNT) * scaleFactor);
+
+  // Use CSS variables for theme-aware colors, with fallback
+  const colorVars = CONFETTI_COLOR_VARS[player] || CONFETTI_COLOR_VARS.X;
+  const fallbackColors = CONFETTI_FALLBACK_COLORS[player] || CONFETTI_FALLBACK_COLORS.X;
+
+  // Check if CSS variables are supported and resolved
+  const testEl = document.createElement('div');
+  testEl.style.color = 'var(--color-x)';
+  const supportsCssVars = testEl.style.color !== '';
+
+  for (let i = 0; i < particleCount; i++) {
     const piece = document.createElement('div');
     piece.className = 'confetti-piece';
 
     // Randomise visual properties via inline styles
     piece.style.left              = `${Math.random() * 100}vw`;
-    piece.style.background        = palette[Math.floor(Math.random() * palette.length)];
+    // Use CSS variable with fallback color
+    const colorVar = colorVars[Math.floor(Math.random() * colorVars.length)];
+    const fallback = fallbackColors[Math.floor(Math.random() * fallbackColors.length)];
+    piece.style.background        = supportsCssVars ? colorVar : fallback;
     piece.style.width             = `${Math.random() * 10 + 6}px`;
     piece.style.height            = `${Math.random() * 10 + 6}px`;
     piece.style.borderRadius      = Math.random() > 0.5 ? '50%' : '2px';

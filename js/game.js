@@ -19,7 +19,13 @@
 import { State } from './state.js';
 import { Render, setCellClickHandler } from './render.js';
 import { AI } from './ai.js';
-import { UNDO_ENABLED } from './constants.js';
+import {
+  UNDO_ENABLED,
+  GRID_EXPAND_DELAY_MS,
+  WIN_END_DELAY_MS,
+  AI_THINKING_DELAY_MIN_MS,
+  AI_THINKING_DELAY_MAX_MS
+} from './constants.js';
 import {
   copyGrid,
   isGridFull,
@@ -167,7 +173,7 @@ function _processMoveOn3x3() {
 
   if (win) {
     Render.drawWinStrike(win.cells, win.winner);
-    setTimeout(() => endGame(win.winner, 'classic'), 350);
+    setTimeout(() => endGame(win.winner, 'classic'), WIN_END_DELAY_MS);
     return;
   }
 
@@ -229,7 +235,7 @@ function _processMoveOnLargeGrid(r, c, player) {
   const winningLine = _findFullChainWin(r, c, player);
   if (winningLine) {
     Render.drawWinStrike(winningLine, player);
-    setTimeout(() => endGame(player, 'classic'), 350);
+    setTimeout(() => endGame(player, 'classic'), WIN_END_DELAY_MS);
     return;
   }
 
@@ -242,7 +248,7 @@ function _processMoveOnLargeGrid(r, c, player) {
     Render.drawScoreStrikes(result.chains, player);
 
     // Show floating score text at the last move position
-    showFloatingScore(r, c, result.points, player);
+    Render.showFloatingScore(r, c, result.points, player);
 
     // Stronger haptic feedback for scoring moves
     hapticFeedback(20);
@@ -263,7 +269,7 @@ function _processMoveOnLargeGrid(r, c, player) {
 
     // Unequal scores → declare the higher scorer the winner
     const winner = State.scores.X > State.scores.O ? 'X' : 'O';
-    setTimeout(() => endGame(winner, 'classic'), 300);
+    setTimeout(() => endGame(winner, 'classic'), WIN_END_DELAY_MS);
     return;
   }
 
@@ -311,7 +317,7 @@ export function triggerAI() {
   Render.updateTurnIndicator();
 
   // Snappy thinking delay — just enough to feel responsive
-  const delay = 150 + Math.random() * 250;
+  const delay = AI_THINKING_DELAY_MIN_MS + Math.random() * (AI_THINKING_DELAY_MAX_MS - AI_THINKING_DELAY_MIN_MS);
 
   State.aiTimeout = setTimeout(() => {
     State.isThinking = false;
@@ -373,7 +379,7 @@ export function expandGrid() {
     }
 
     switchTurn();
-  }, 300);
+  }, GRID_EXPAND_DELAY_MS);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -561,58 +567,3 @@ export function clearTimers() {
   if (State.aiTimeout)     { clearTimeout(State.aiTimeout);      State.aiTimeout     = null; }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  Floating score animation
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Shows a floating "+N" text animation at the specified cell.
- * @param {number} r - Row of the cell.
- * @param {number} c - Column of the cell.
- * @param {number} points - Points to display.
- * @param {'X'|'O'} player - The scoring player.
- */
-function showFloatingScore(r, c, points, player) {
-  const cell = Render.getCell(r, c);
-  if (!cell) return;
-
-  const floatEl = document.createElement('div');
-  floatEl.className = 'floating-score';
-  floatEl.textContent = `+${points}`;
-  floatEl.style.color = player === 'X' ? 'var(--color-x)' : 'var(--color-o)';
-
-  // Position at the center of the cell using relative percentages to handle zoom
-  const cellSize = Render.cellSize || 60;
-  const gap = 6;
-  const padding = 6;
-
-  // Calculate position based on grid coordinates (works with zoom/pan)
-  const x = padding + c * (cellSize + gap) + cellSize / 2;
-  const y = padding + r * (cellSize + gap) + cellSize / 2;
-
-  floatEl.style.left = `${x}px`;
-  floatEl.style.top = `${y}px`;
-
-  document.getElementById('game-grid').appendChild(floatEl);
-
-  // Remove floatEl after animation completes
-  setTimeout(() => floatEl.remove(), 1200);
-
-  // Sparkle particles
-  for (let i = 0; i < 8; i++) {
-    const p = document.createElement('div');
-    p.className = 'score-sparkle';
-    p.style.backgroundColor = player === 'X' ? 'var(--color-x)' : 'var(--color-o)';
-    p.style.left = `${x}px`;
-    p.style.top = `${y}px`;
-    
-    // Random trajectory
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 30 + Math.random() * 40;
-    p.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
-    p.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
-    
-    document.getElementById('game-grid').appendChild(p);
-    setTimeout(() => p.remove(), 800);
-  }
-}
