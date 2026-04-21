@@ -448,22 +448,6 @@ export const App = {
       if (elScore) elScore.textContent = hscore;
       if (elGrid) elGrid.textContent = saved.largestGrid ? `${saved.largestGrid}×${saved.largestGrid}` : 'N/A';
 
-      // Unlock logic
-      const btnNeon = document.getElementById('theme-neon');
-      const iconNeon = document.getElementById('theme-neon-icon');
-      if (btnNeon && played >= 5) {
-        btnNeon.classList.remove('locked');
-        btnNeon.title = "Neon";
-        iconNeon.className = "fa-solid fa-flask";
-      }
-
-      const btnSunset = document.getElementById('theme-sunset');
-      const iconSunset = document.getElementById('theme-sunset-icon');
-      if (btnSunset && hscore >= 50) {
-        btnSunset.classList.remove('locked');
-        btnSunset.title = "Sunset";
-        iconSunset.className = "fa-solid fa-sun";
-      }
     } catch (_) {}
   },
 
@@ -663,16 +647,7 @@ export const App = {
    * @param {string} name - Theme key.
    */
   setTheme(name) {
-    if (name === 'neon') {
-      const saved = JSON.parse(localStorage.getItem('ttg_stats') || '{}');
-      if ((saved.gamesPlayed || 0) < 5) return this.showToast('Play 5 games to unlock!');
-    }
-    if (name === 'sunset') {
-      const saved = JSON.parse(localStorage.getItem('ttg_stats') || '{}');
-      if ((saved.highestScore || 0) < 50) return this.showToast('Score 50+ points to unlock!');
-    }
-
-    document.documentElement.dataset.theme = name === 'default' ? '' : name;
+    document.documentElement.dataset.theme = name;
 
     // Highlight the active theme button
     document.querySelectorAll('.theme-btn').forEach(btn => {
