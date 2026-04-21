@@ -1868,6 +1868,7 @@ body {
   letter-spacing: 2px;
   outline: none;
   transition: border-color 0.2s;
+  padding: 0 36px 0 12px;
 }
 
 .room-code-input:focus {
@@ -2544,23 +2545,31 @@ body {
 
 .clear-input-btn {
   position: absolute;
-  right: 12px;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: none;
-  border: none;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
   color: var(--fg-secondary);
-  font-size: 18px;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
   cursor: pointer;
-  padding: 5px;
+  padding: 0;
   z-index: 10;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  opacity: 0.7;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .clear-input-btn:hover {
   opacity: 1;
-  color: var(--color-x);
+  background: var(--color-x);
+  border-color: var(--color-x);
+  color: var(--bg-primary);
 }
 
 /* ============================================================

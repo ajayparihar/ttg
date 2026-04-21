@@ -156,9 +156,6 @@
     <div class="lobby-card">
       <h3>Host a Ring</h3>
       <p>Create a Ring and share the ID.</p>
-      <button class="btn btn-icon back-lobby-btn" onclick="Multiplayer.leaveRoom()" aria-label="Leave multiplayer room">
-        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
-      </button>
       <button class="btn btn-primary" onclick="Multiplayer.createRoom()">
         <i class="fa-solid fa-plus" aria-hidden="true"></i> Create Private Ring
       </button>
@@ -173,8 +170,8 @@
         <div class="input-with-clear">
           <input type="text" id="join-code-input" class="room-code-input" 
                  placeholder="ID" maxlength="4" autocomplete="off">
-          <button class="clear-input-btn" id="clear-join-input" onclick="document.getElementById('join-code-input').value = ''" style="display:none;">
-            <i class="fa-solid fa-times"></i>
+          <button class="clear-input-btn" id="clear-join-input" onclick="document.getElementById('join-code-input').value = ''; document.getElementById('join-code-input').focus();" style="display:none;">
+            <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <button class="btn btn-primary" onclick="Multiplayer.joinRoom()">Join</button>
