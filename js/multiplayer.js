@@ -427,6 +427,13 @@ export const Multiplayer = {
     this._syncFromRemote(remoteState);
     App.showScreen('game');
 
+    // Show reaction UI for guests (host gets this via App.initGame)
+    const reactContainer = document.getElementById('reaction-container');
+    if (reactContainer) {
+      reactContainer.style.display = 'flex';
+      App.updateReactionTray();
+    }
+
     // Deferred build to let the screen layout settle
     setTimeout(() => {
       Render.buildGrid(State.gridSize);
@@ -827,7 +834,8 @@ export const Multiplayer = {
    */
   _showReaction(emoji, isLocal) {
     const bubble = document.createElement('div');
-    bubble.className = 'reaction-bubble';
+    // Add 'local' or 'remote' class for direction-specific animation
+    bubble.className = `reaction-bubble ${isLocal ? 'local' : 'remote'}`;
     bubble.textContent = emoji;
 
     // Position at the center of the grid wrapper for maximum visibility
@@ -843,6 +851,6 @@ export const Multiplayer = {
     }
 
     document.body.appendChild(bubble);
-    setTimeout(() => bubble.remove(), 2000);
+    setTimeout(() => bubble.remove(), 2500);
   }
 };

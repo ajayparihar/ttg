@@ -472,7 +472,8 @@ function _renderGameOverScreen(winner, reason) {
 
     goTitle.textContent = titles[Math.floor(Math.random() * titles.length)];
     goTitle.className   = `gameover-title ${isDefeat ? 'defeat' : `win-${w.toLowerCase()}`}`;
-    goSubtitle.textContent = `${winnerName} ${quotes[Math.floor(Math.random() * quotes.length)]}`;
+    const displayName = isDefeat ? State.names[w === 'X' ? 'O' : 'X'] : winnerName;
+    goSubtitle.textContent = `${displayName} ${quotes[Math.floor(Math.random() * quotes.length)]}`;
 
     // Launch confetti only for human victories
     if (State.mode === 'dual' || w === 'X') {
