@@ -66,6 +66,48 @@ export function hapticFeedback(duration = 10) {
   }
 }
 
+/**
+ * Triggers a pattern-based haptic feedback sequence.
+ * @param {number[]} pattern - Array of vibration/pause durations in milliseconds.
+ */
+export function hapticPattern(pattern) {
+  if (navigator.vibrate && typeof navigator.vibrate === 'function') {
+    try {
+      navigator.vibrate(pattern);
+    } catch (_) {
+      // Ignore if vibration fails
+    }
+  }
+}
+
+/**
+ * Haptic feedback presets for different game events.
+ */
+export const HapticPresets = {
+  /** Light tap for standard interactions */
+  TAP: 10,
+  /** Medium feedback for scoring moves */
+  SCORE: 20,
+  /** Strong feedback for significant events */
+  STRONG: 30,
+  /** Victory celebration pattern */
+  VICTORY: [30, 50, 30, 50, 60],
+  /** Defeat/warning pattern */
+  DEFEAT: [40, 30, 40],
+  /** Error/denial feedback */
+  ERROR: 15,
+  /** Turn switch notification */
+  TURN_SWITCH: 8,
+  /** Button press feedback */
+  BUTTON: 5,
+  /** Undo action feedback */
+  UNDO: [15, 20, 15],
+  /** Urgent timer warning */
+  URGENT: [20, 30, 20, 30, 20],
+  /** Grid expansion celebration */
+  EXPAND: [25, 40, 35]
+};
+
 // ---------------------------------------------------------------------------
 // Grid helpers
 // ---------------------------------------------------------------------------

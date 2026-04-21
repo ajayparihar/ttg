@@ -32,6 +32,8 @@ import { App } from './app.js';
 import { makeMove, switchTurn, clearTimers } from './game.js';
 import { Render } from './render.js';
 import { i18n } from './i18n.js';
+import { hapticFeedback, HapticPresets } from './utils.js';
+import { GOOGLE_SIGNIN_ENABLED } from './constants.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Firebase initialisation
@@ -148,21 +150,27 @@ export const Multiplayer = {
 
   /**
    * Triggers the Google Auth popup.
+   * Returns early if GOOGLE_SIGNIN_ENABLED is false.
    */
   async loginWithGoogle() {
+    if (!GOOGLE_SIGNIN_ENABLED) {
+      App.showToast("Google Sign-in is currently disabled.");
+      return;
+    }
+
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
       // Initialize the listener if not already done
       this.initId();
-      
+
       // Use signInWithPopup for better UX (no page reload)
       const result = await auth.signInWithPopup(provider);
-      
+
       // The onAuthStateChanged listener will handle the UI update
       console.log("Google login successful:", result.user);
     } catch (err) {
       console.error("Google login failed:", err);
-      
+
       if (err.code === 'auth/unauthorized-domain') {
         App.showToast("Domain not authorized. Use Firebase Console to fix.");
         console.warn("ACTION REQUIRED: Add ajayparihar.github.io to Authorized Domains in Firebase.");
@@ -493,6 +501,8 @@ export const Multiplayer = {
       const data = snap.val();
       if (data && data.sender !== State.userId) {
         this._showReaction(data.emoji, false);
+        // Haptic feedback when receiving a reaction from opponent
+        hapticFeedback(HapticPresets.TAP);
       }
     });
   },
@@ -839,6 +849,11 @@ export const Multiplayer = {
    * @private
    */
   _showReaction(emoji, isLocal) {
+    // Light haptic for local reactions too
+    if (isLocal) {
+      hapticFeedback(HapticPresets.BUTTON);
+    }
+
     const bubble = document.createElement('div');
     // Add 'local' or 'remote' class for direction-specific animation
     bubble.className = `reaction-bubble ${isLocal ? 'local' : 'remote'}`;

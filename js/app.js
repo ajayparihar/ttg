@@ -22,10 +22,10 @@
 
 import { State } from './state.js';
 import { Render } from './render.js';
-import { MODE, ZOOM_STEP, MAX_ZOOM, UNDO_ENABLED } from './constants.js';
+import { MODE, ZOOM_STEP, MAX_ZOOM, UNDO_ENABLED, GOOGLE_SIGNIN_ENABLED } from './constants.js';
 import { createGrid } from './grid.js';
 import { clearTimers, triggerAI, endGame } from './game.js';
-import { clamp } from './utils.js';
+import { clamp, hapticFeedback, hapticPattern, HapticPresets } from './utils.js';
 import { clampPan } from './zoom.js';
 import { Multiplayer } from './multiplayer.js';
 import { Tutorial } from './tutorial.js';
@@ -86,7 +86,13 @@ export const App = {
     if (id === 'menu') {
       const multiBtn = document.querySelector('[data-i18n="play_friend"]');
       if (multiBtn) {
-        if (State.loginSkipped) {
+        // When Google Sign-in is disabled but anonymous play is allowed,
+        // the multiplayer button should still work (uses anonymous auth)
+        if (!GOOGLE_SIGNIN_ENABLED) {
+          multiBtn.classList.remove('btn-disabled');
+          multiBtn.title = "";
+          multiBtn.onclick = () => { this.setupModeDefaults('dual'); this.showScreen('multiplayer-lobby'); };
+        } else if (State.loginSkipped) {
           multiBtn.classList.add('btn-disabled');
           multiBtn.title = "Login with Google to play online.";
           // Instead of just toast, now trigger the LOGIN popup!
@@ -305,6 +311,9 @@ export const App = {
     Render.setZoomDisplay(State.zoomLevel);
 
     this.showToast('Undo used!');
+
+    // Haptic feedback for undo action
+    hapticPattern(HapticPresets.UNDO);
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -318,7 +327,13 @@ export const App = {
    * @param {1|-1} dir - `+1` to zoom in, `−1` to zoom out.
    */
   zoom(dir) {
+    const prevZoom = State.zoomLevel;
     State.zoomLevel = clamp(State.zoomLevel + dir * ZOOM_STEP, 1.0, MAX_ZOOM);
+
+    // Haptic feedback when zoom level actually changes
+    if (State.zoomLevel !== prevZoom) {
+      hapticFeedback(HapticPresets.BUTTON);
+    }
 
     // Reset pan when fully zoomed out (prevents off-centre at 100 %)
     if (State.zoomLevel === 1.0) {
@@ -337,6 +352,9 @@ export const App = {
     State.zoomLevel = 1.0;
     State.panX = 0;
     State.panY = 0;
+
+    // Haptic feedback for reset zoom
+    hapticFeedback(HapticPresets.BUTTON);
     Render.setZoomDisplay(State.zoomLevel);
   },
 
@@ -460,11 +478,11 @@ export const App = {
 
   /**
    * Proceeds to the main menu without a Google account.
-   * Online features will be disabled.
+   * Uses anonymous auth for online play without Google profile.
    */
   skipLogin() {
     State.loginSkipped = true;
-    Multiplayer.initId(); // Triggers anonymous login
+    Multiplayer.initId(); // Initialize anonymous auth
     this.showScreen('menu');
   },
 
@@ -472,6 +490,12 @@ export const App = {
   updateUserUI() {
     const container = document.getElementById('user-auth');
     if (!container) return;
+
+    // When Google Sign-in is disabled, hide the auth UI entirely
+    if (!GOOGLE_SIGNIN_ENABLED) {
+      container.style.display = 'none';
+      return;
+    }
 
     if (State.loginSkipped) {
       container.innerHTML = `
@@ -537,6 +561,7 @@ export const App = {
       slot.className = `emoji-slot ${this._selectedEmojiSlot === i ? 'selected' : ''}`;
       slot.textContent = emoji;
       slot.onclick = () => {
+        hapticFeedback(HapticPresets.BUTTON);
         this._selectedEmojiSlot = i;
         this.updateEmojiUI();
       };
@@ -563,9 +588,13 @@ export const App = {
    */
   equipEmoji(emoji) {
     if (this._selectedEmojiSlot === undefined) {
+      hapticFeedback(HapticPresets.ERROR);
       this.showToast("Select a slot first!");
       return;
     }
+
+    // Haptic feedback for equipping emoji
+    hapticFeedback(HapticPresets.TAP);
     
     // Replace emoji in the active array
     State.activeEmojis[this._selectedEmojiSlot] = emoji;
@@ -590,7 +619,10 @@ export const App = {
     State.activeEmojis.forEach(emoji => {
       const btn = document.createElement('button');
       btn.textContent = emoji;
-      btn.onclick = () => Multiplayer.sendReaction(emoji);
+      btn.onclick = () => {
+        hapticFeedback(HapticPresets.TAP);
+        Multiplayer.sendReaction(emoji);
+      };
       tray.appendChild(btn);
     });
   },
@@ -629,6 +661,9 @@ export const App = {
    * @param {'single'|'dual'} mode - The preferred game mode.
    */
   setGameMode(mode) {
+    // Haptic feedback for mode selection
+    hapticFeedback(HapticPresets.BUTTON);
+
     // Update button active states
     document.querySelectorAll('[data-mode]').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.mode === mode);
@@ -647,6 +682,9 @@ export const App = {
    * @param {string} name - Theme key.
    */
   setTheme(name) {
+    // Haptic feedback for theme selection
+    hapticFeedback(HapticPresets.BUTTON);
+
     document.documentElement.dataset.theme = name;
 
     // Highlight the active theme button
@@ -666,6 +704,9 @@ export const App = {
    * Toggles sound effects on/off and persists the setting.
    */
   toggleSound() {
+    // Haptic feedback for sound toggle
+    hapticFeedback(HapticPresets.BUTTON);
+
     State.soundEnabled = !State.soundEnabled;
     this._updateSoundButton();
 

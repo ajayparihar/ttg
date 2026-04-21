@@ -21,6 +21,8 @@ import { initZoomPan } from './zoom.js';
 import { Multiplayer } from './multiplayer.js';
 import { makeMove } from './game.js';
 import { i18n } from './i18n.js';
+import { hapticFeedback, HapticPresets } from './utils.js';
+import { GOOGLE_SIGNIN_ENABLED } from './constants.js';
 
 // ---------------------------------------------------------------------------
 // Bridge for remaining inline `onclick` handlers in the HTML.
@@ -50,8 +52,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---- 2. Initialize Multiplayer Identity (Check for existing login) ---- */
+  /* ---- 2. Initialize Multiplayer Identity (anonymous auth always) ---- */
   Multiplayer.initId();
+
+  /* ---- 2a. Skip Google login screen when disabled ---- */
+  if (!GOOGLE_SIGNIN_ENABLED) {
+    State.loginSkipped = true;
+    App.showScreen('menu');
+  }
 
   /* ---- 3. Restore user preferences (e.g. theme) from localStorage ---- */
   App.loadSaved();
@@ -185,6 +193,8 @@ function handleGridNavigation(e) {
   }
 
   if (moved) {
+    // Subtle haptic feedback for keyboard navigation
+    hapticFeedback(HapticPresets.BUTTON);
     updateFocusIndicator();
     scrollCellIntoView(focusedCell.r, focusedCell.c);
   }

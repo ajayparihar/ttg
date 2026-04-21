@@ -1466,6 +1466,16 @@ body {
   background: rgba(0,255,136,0.08);
 }
 
+/* Theme button icon colors - matched to the theme they preview for visibility */
+.theme-btn[data-theme="dag-dark"] i { color: #e5e5e5; }
+.theme-btn[data-theme="dag-dark-blue"] i { color: #a8c8e8; }
+.theme-btn[data-theme="dag-dark-yellow"] i { color: #e8d8a8; }
+.theme-btn[data-theme="dag-contrast-dark"] i { color: #ff6b6b; }
+.theme-btn[data-theme="dag-light"] i { color: #f5f5f5; }
+.theme-btn[data-theme="dag-light-red"] i { color: #ff8888; }
+.theme-btn[data-theme="dag-light-blue"] i { color: #8aa8ff; }
+.theme-btn[data-theme="dag-contrast-light"] i { color: #ff6b6b; }
+
 /* Toggle button for settings (sound, etc.) */
 .btn-toggle {
   width: 100%;

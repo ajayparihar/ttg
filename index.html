@@ -419,21 +419,7 @@
      ============================================================ -->
 <div class="settings-overlay" id="settings-overlay" onclick="App.closeSettings()"></div>
 <div class="settings-panel" id="settings-panel">
-  <div class="settings-header">
-    <div class="settings-title">Preferences</div>
-  </div>
-
   <div>
-    <div class="settings-section-title">Game Mode</div>
-    <div class="setting-row">
-      <button class="btn btn-secondary active" data-mode="single" onclick="App.setGameMode('single')">
-        <i class="fa-solid fa-user"></i> Single Player
-      </button>
-      <button class="btn btn-secondary" data-mode="dual" onclick="App.setGameMode('dual')">
-        <i class="fa-solid fa-users"></i> Dual Player
-      </button>
-    </div>
-
     <div class="settings-section-title">Color Theme</div>
     <div class="theme-grid">
       <button class="btn theme-btn active" data-theme="dag-dark" onclick="App.setTheme('dag-dark')">
@@ -472,14 +458,6 @@
   </div>
 
   <div>
-    <div class="settings-section-title">Language</div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;">
-      <button class="btn btn-secondary btn-sm" onclick="import('./js/i18n.js').then(m => m.i18n.setLang('en'))">EN</button>
-      <button class="btn btn-secondary btn-sm" onclick="import('./js/i18n.js').then(m => m.i18n.setLang('es'))">ES</button>
-    </div>
-  </div>
-
-  <div>
     <div class="settings-section-title">Sound</div>
     <button class="btn btn-toggle" id="sound-toggle-btn" onclick="App.toggleSound()">
       <i class="fa-solid fa-volume-high" id="sound-icon"></i>
@@ -500,8 +478,6 @@
     <div class="settings-section-title">About</div>
     <p style="font-size:13px;color:var(--fg-secondary);line-height:1.6;">
       Tic Tac Grow v1.0<br>
-      Ties grow the board!<br>
-      Score points for chains of 3+ on grids 4×4 and larger.
     </p>
   </div>
 

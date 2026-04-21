@@ -54,6 +54,13 @@ export const MODE = false;
  */
 export const UNDO_ENABLED = false;
 
+/**
+ * Feature flag controlling Google Sign-in / Firebase Auth integration.
+ *   - `true`  → enable Google Sign-in, online multiplayer, and profile features.
+ *   - `false` → disable Google Sign-in, skip login screen, go directly to menu.
+ */
+export const GOOGLE_SIGNIN_ENABLED = false;
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  LAYOUT CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════

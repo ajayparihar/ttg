@@ -40,7 +40,7 @@ import { launchConfetti } from './confetti.js';
 import { App } from './app.js';
 import { makeCrownSvg } from './svg.js';
 import { Multiplayer } from './multiplayer.js';
-import { hapticFeedback } from './utils.js';
+import { hapticFeedback, hapticPattern, HapticPresets } from './utils.js';
 import { Tutorial } from './tutorial.js';
 import { i18n } from './i18n.js';
 
@@ -71,7 +71,10 @@ export function handleCellClick(e) {
   if (!State.gameActive)       return;   // Game not running
   if (State.paused)            return;   // Pause modal is open
   if (State.isProcessing)      return;   // Already handling a move
-  if (State.grid[r][c])        return;   // Cell already occupied
+  if (State.grid[r][c]) {               // Cell already occupied
+    hapticFeedback(HapticPresets.ERROR);
+    return;
+  }
 
   // Block input when it's the AI's turn
   if (State.mode === 'single' && State.currentPlayer === 'O') return;
@@ -138,8 +141,8 @@ export function makeMove(r, c, isAI = false) {
   State.lastMove     = { r, c, player };
   Render.updateCell(r, c, player);
 
-  // Haptic feedback on mobile devices (10ms light tap)
-  hapticFeedback(10);
+  // Haptic feedback on mobile devices (light tap)
+  hapticFeedback(HapticPresets.TAP);
 
   // ── Delegate to board-size-specific outcome processor ──────────────
   if (State.gridSize === 3) {
@@ -250,8 +253,9 @@ function _processMoveOnLargeGrid(r, c, player) {
     // Show floating score text at the last move position
     Render.showFloatingScore(r, c, result.points, player);
 
-    // Stronger haptic feedback for scoring moves
-    hapticFeedback(20);
+    // Stronger haptic feedback for scoring moves (intensity based on points)
+    const scoreHaptic = result.points >= 30 ? HapticPresets.STRONG : HapticPresets.SCORE;
+    hapticFeedback(scoreHaptic);
 
     // Notify the player with a toast for notable scores
     if (result.points >= 20) {
@@ -292,6 +296,10 @@ function _processMoveOnLargeGrid(r, c, player) {
 export function switchTurn() {
   State.currentPlayer = State.currentPlayer === 'X' ? 'O' : 'X';
   State.isProcessing  = false;   // Turn is now open for input
+
+  // Subtle haptic feedback for turn switch (only for human players)
+  hapticFeedback(HapticPresets.TURN_SWITCH);
+
   Render.updateTurnIndicator();
 
   // Synchronise turn change to Firebase (granular update)
@@ -357,7 +365,7 @@ export function expandGrid() {
 
   Render.animateGridExpand();
   App.showToast(`Board grows to ${State.gridSize}×${State.gridSize}!`);
-  hapticFeedback(30);
+  hapticPattern(HapticPresets.EXPAND);
 
   if (Tutorial.active) Tutorial.nextStep();
 
@@ -398,6 +406,18 @@ export function endGame(winner, reason) {
   State.isProcessing = false;
   State.winner       = winner;
   clearTimers();
+
+  // Haptic feedback for game end (victory or defeat pattern)
+  const isDraw = (winner === 'draw' || (!winner && State.scores.X === State.scores.O));
+  const isDefeat = !isDraw && ((State.isMultiplayer && winner !== State.playerRole) ||
+                   (State.mode === 'single' && winner === 'O'));
+  if (isDraw) {
+    hapticFeedback(HapticPresets.TAP);
+  } else if (isDefeat) {
+    hapticPattern(HapticPresets.DEFEAT);
+  } else {
+    hapticPattern(HapticPresets.VICTORY);
+  }
 
   _renderGameOverScreen(winner, reason);
   App.showScreen('gameover');
