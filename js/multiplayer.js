@@ -56,6 +56,9 @@ const firebaseConfig = {
 // Initialise Firebase exactly once (guards against hot-reload duplicates)
 if (firebase.apps.length === 0) {
   firebase.initializeApp(firebaseConfig);
+  
+  // Enable auth persistence for better UX
+  firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 }
 
 /** Firebase Realtime Database reference. */
@@ -152,17 +155,23 @@ export const Multiplayer = {
       // Initialize the listener if not already done
       this.initId();
       
-      // Use signInWithRedirect instead of Popup to avoid COOP/CORS issues
-      // in modern browsers and cross-origin environments.
-      await auth.signInWithRedirect(provider);
+      // Use signInWithPopup for better UX (no page reload)
+      const result = await auth.signInWithPopup(provider);
+      
+      // The onAuthStateChanged listener will handle the UI update
+      console.log("Google login successful:", result.user);
     } catch (err) {
       console.error("Google login failed:", err);
       
       if (err.code === 'auth/unauthorized-domain') {
         App.showToast("Domain not authorized. Use Firebase Console to fix.");
         console.warn("ACTION REQUIRED: Add ajayparihar.github.io to Authorized Domains in Firebase.");
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        App.showToast("Login cancelled.");
+      } else if (err.code === 'auth/popup-blocked') {
+        App.showToast("Popup blocked. Please allow popups for this site.");
       } else {
-        App.showToast("Login failed.");
+        App.showToast("Login failed: " + err.message);
       }
     }
   },
@@ -173,7 +182,15 @@ export const Multiplayer = {
   async logout() {
     try {
       await auth.signOut();
-      window.location.reload(); // Hard reload to clear all states
+      
+      // Clear user state manually instead of reload
+      State.userId = null;
+      State.userProfile = null;
+      State.loginSkipped = false;
+      
+      // Return to login screen
+      App.showScreen('login');
+      App.showToast("Signed out successfully");
     } catch (err) {
       console.error("Logout failed:", err);
       App.showToast("Logout failed.");
