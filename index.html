@@ -427,9 +427,27 @@
   </div>
 
   <div>
+    <div class="settings-section-title">Game Mode</div>
+    <div class="setting-row">
+      <button class="btn btn-secondary active" data-mode="single" onclick="App.setGameMode('single')">
+        <i class="fa-solid fa-user"></i> Single Player
+      </button>
+      <button class="btn btn-secondary" data-mode="dual" onclick="App.setGameMode('dual')">
+        <i class="fa-solid fa-users"></i> Dual Player
+      </button>
+    </div>
+
     <div class="settings-section-title">Color Theme</div>
     <div class="theme-grid">
-      <button class="btn theme-btn active" data-theme="default" onclick="App.setTheme('default')">
+      <button class="btn theme-btn active" data-theme="dag-dark" onclick="App.setTheme('dag-dark')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#0a0a0a,#e5e5e5)"></div>
+        <i class="fa-solid fa-moon"></i>
+      </button>
+      <button class="btn theme-btn" data-theme="dag-light" onclick="App.setTheme('dag-light')">
+        <div class="theme-swatch" style="background:linear-gradient(135deg,#e5e5e5,#0a0a0a)"></div>
+        <i class="fa-solid fa-sun"></i>
+      </button>
+      <button class="btn theme-btn" data-theme="default" onclick="App.setTheme('default')">
         <div class="theme-swatch" style="background:linear-gradient(135deg,#E8344A,#2C6EF2)"></div>
         <i class="fa-solid fa-palette"></i>
       </button>

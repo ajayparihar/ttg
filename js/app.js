@@ -641,6 +641,23 @@ export const App = {
   // ─────────────────────────────────────────────────────────────────────
 
   /**
+   * Sets the default game mode preference and persists it.
+   * @param {'single'|'dual'} mode - The preferred game mode.
+   */
+  setGameMode(mode) {
+    // Update button active states
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    // Save preference
+    try {
+      localStorage.setItem('ttg_gamemode', mode);
+      this.showToast(`Default mode: ${mode === 'single' ? 'Single Player' : 'Dual Player'}`);
+    } catch (_) {}
+  },
+
+  /**
    * Applies a colour theme to the document root and persists the choice.
    * Checks locks first.
    * @param {string} name - Theme key.
@@ -880,13 +897,24 @@ export const App = {
         const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
 
         if (prefersLight) {
-          // Default is already light-friendly, no change needed
-          this.setTheme('default');
+          // Use DAG Light for light mode preference
+          this.setTheme('dag-light');
+        } else {
+          // Use DAG Dark as default (also for dark mode or no preference)
+          this.setTheme('dag-dark');
         }
-        // If prefers dark or no preference, default dark theme is already set
       }
+    } catch (_) {}
 
-      // First visit tutorial check
+    try {
+      const savedMode = localStorage.getItem('ttg_gamemode');
+      if (savedMode) {
+        this.setGameMode(savedMode);
+      }
+    } catch (_) {}
+
+    // First visit tutorial check
+    try {
       const tutorialDone = localStorage.getItem('ttg_tutorial_done');
       if (!tutorialDone) {
         // Quietly wait for user to find it themselves or use a subtle hint later
