@@ -255,8 +255,10 @@ export const Multiplayer = {
 
     // ── Write Ring to Firebase ───────────────────────────────────────
     const roomRef = db.ref(`rings/${code}`);
-    roomRef.onDisconnect().update({ status: 'abandoned' });
-
+    // During waiting, we don't mark as abandoned on disconnect yet, 
+    // to allow for brief connection flickers (e.g. host switching apps to share code).
+    // Instead, we'll set the hook when the game actually starts.
+    
     await roomRef.set({
       hostId:      State.userId,
       hostName:    State.names.X || 'Host',
@@ -290,6 +292,14 @@ export const Multiplayer = {
     roomRef.on('value', (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
+
+      // Handle accidental "abandoned" status (e.g. host switched apps and connection flickered)
+      // If we are still here, we reclaim the room.
+      if (data.status === 'abandoned' && App.currentScreen === 'multiplayer-waiting') {
+        console.log("Host re-sync: reclaiming room from abandoned state...");
+        roomRef.update({ status: 'waiting' });
+        return;
+      }
 
       // Detect guest arrival (status changes to 'ready' or guestId appears)
       const slotGuest = document.getElementById('slot-guest');
@@ -364,14 +374,20 @@ export const Multiplayer = {
 
     // ── Room availability check ──────────────────────────────────────
     // Room must be in 'waiting' status AND have no guest assigned yet
-    if (data.status !== 'waiting' || data.guestId) {
-      if (data.status === 'abandoned') {
-        App.showToast("Room was abandoned by host.");
-      } else if (data.guestId) {
-        App.showToast("Room is full (guest already joined).");
-      } else {
-        App.showToast("Room is full or already started.");
-      }
+    // (unless we are that guest, e.g. rejoining after a flicker)
+    const isAlreadyGuest = data.guestId === State.userId;
+    
+    if (data.status !== 'waiting' && data.status !== 'ready') {
+       if (data.status === 'abandoned') {
+         App.showToast("Room is busy or host connection flickered. Try again.");
+       } else {
+         App.showToast("Room is already in progress.");
+       }
+       return;
+    }
+
+    if (data.guestId && !isAlreadyGuest) {
+      App.showToast("Room is full (guest already joined).");
       return;
     }
 
@@ -383,7 +399,8 @@ export const Multiplayer = {
     State.duration      = data.duration || 0;
     State.timeLeft      = State.duration;
 
-    roomRef.onDisconnect().update({ status: 'abandoned' });
+    // We wait to set the onDisconnect hook until the game actually starts
+    // or until we successfully update our guest status below.
 
     // ── Write guest data to Firebase ─────────────────────────────────
     const guestName = State.userProfile?.name || State.names.O || 'Guest';
@@ -454,6 +471,9 @@ export const Multiplayer = {
 
     // ── Push game state and set status to 'playing' ──────────────────
     // Important: we must push to the 'gameState' property as the listeners expect.
+    // Also set the onDisconnect hook now that the game is truly starting.
+    roomRef.onDisconnect().update({ status: 'abandoned' });
+
     await roomRef.update({
       status:    'playing',
       gameState: this._getSerializableState()
@@ -476,6 +496,10 @@ export const Multiplayer = {
   _startRemoteGame(remoteState) {
     this._syncFromRemote(remoteState);
     App.showScreen('game');
+
+    // Set onDisconnect hook for guest now that game is active
+    const roomRef = db.ref(`rings/${State.roomCode}`);
+    roomRef.onDisconnect().update({ status: 'abandoned' });
 
     // Show reaction UI for guests (host gets this via App.initGame)
     const reactContainer = document.getElementById('reaction-container');
@@ -598,15 +622,11 @@ export const Multiplayer = {
   pushMove(r, c, player, isExpansion = false) {
     if (!State.isMultiplayer || !State.roomCode) return;
 
-    // Use update for better atomicity at the gameState level
-    const updateObj = {
-      ...this._getSerializableState(),
-      // Ensure the cell mark is explicitly included even if grid was just updated
-      [`grid/${r}/${c}`]: player
-    };
-
-    // If it's an expansion, we might have multiple cells to update (the new row/col)
-    // but _getSerializableState already grabs State.grid, which is correct.
+    // Use update for better atomicity at the gameState level.
+    // We send the full serializable state which already includes the updated State.grid.
+    // Note: We MUST NOT include both 'grid' and 'grid/r/c' as Firebase update() 
+    // will fail with an "ancestor path" error if paths overlap.
+    const updateObj = this._getSerializableState();
 
     db.ref(`rings/${State.roomCode}/gameState`).update(updateObj);
   },
