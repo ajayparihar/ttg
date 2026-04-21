@@ -583,53 +583,37 @@ export const Multiplayer = {
   },
 
   /**
-   * Pushes the current local game state to Firebase so the remote
-   * player can pick it up.
-   *
-   * No-ops outside multiplayer mode.
+   * Pushes the entire local game state to Firebase as a single atomic unit.
+   * This is the "Permanent Solution" to synchronization: by always sending
+   * the full state, we eliminate the possibility of partial desyncs.
+   * 
+   * Includes an echo-guard (lastModifiedBy) and a server-side timestamp.
    */
-  pushState() {
-    if (!State.isMultiplayer) return;
+  syncState() {
+    if (!State.isMultiplayer || !State.roomCode) return;
+    
     const roomRef = db.ref(`rings/${State.roomCode}/gameState`);
-    roomRef.set(this._getSerializableState());
+    const state = this._getSerializableState();
+    
+    // We use .set() instead of .update() for the full state to ensure 
+    // any keys not present are cleared (though our state is currently fixed-shape).
+    roomRef.set(state).catch(e => console.error("Sync failed:", e));
   },
+
+  /** 
+   * @deprecated Use syncState() for permanent reliability.
+   */
+  pushState() { this.syncState(); },
 
   /**
-   * Pushes a partial update to the game state.
-   * Least data intensive way to sync changes across the server.
-   * @param {object} delta - Key-value pairs to update.
+   * @deprecated Use syncState() for permanent reliability.
    */
-  pushStateUpdate(delta) {
-    if (!State.isMultiplayer || !State.roomCode) return;
-    const updateObj = {
-      ...delta,
-      lastModifiedBy: State.userId,
-      timestamp: firebase.database.ServerValue.TIMESTAMP
-    };
-    db.ref(`rings/${State.roomCode}/gameState`).update(updateObj);
-  },
+  pushStateUpdate() { this.syncState(); },
 
   /**
-   * Efficiently pushes a single move and all associated state changes in one
-   * atomic transaction. This prevents race conditions where an opponent
-   * might receive a move update but not a turn update.
-   *
-   * @param {number} r - Row index.
-   * @param {number} c - Column index.
-   * @param {string} player - The mark ('X' or 'O') just placed.
-   * @param {boolean} [isExpansion=false] - Whether this move caused an expansion.
+   * @deprecated Use syncState() for permanent reliability.
    */
-  pushMove(r, c, player, isExpansion = false) {
-    if (!State.isMultiplayer || !State.roomCode) return;
-
-    // Use update for better atomicity at the gameState level.
-    // We send the full serializable state which already includes the updated State.grid.
-    // Note: We MUST NOT include both 'grid' and 'grid/r/c' as Firebase update() 
-    // will fail with an "ancestor path" error if paths overlap.
-    const updateObj = this._getSerializableState();
-
-    db.ref(`rings/${State.roomCode}/gameState`).update(updateObj);
-  },
+  pushMove() { this.syncState(); },
 
   /**
    * Converts the current {@link State} into a plain JSON-serialisable
@@ -682,10 +666,23 @@ export const Multiplayer = {
   _syncFromRemote(data) {
     if (!data) return;
 
+    // ── Order Protection (Timestamp Guard) ───────────────────────────
+    // If we receive an update that is older than our last processed sync, 
+    // we discard it. This handles high-latency "out of order" delivery.
+    if (data.timestamp && State.lastSyncTimestamp && data.timestamp <= State.lastSyncTimestamp) {
+      return;
+    }
+    
+    // ── Echo Guard ───────────────────────────────────────────────────
+    // Only sync if the change was made by the other player
+    if (data.lastModifiedBy === State.userId) {
+      return;
+    }
+
+    State.lastSyncTimestamp = data.timestamp;
     const oldSize = State.gridSize;
     
-    // Defensively determine the new size. Some partial updates might miss the gridSize key
-    // but include the expanded grid array.
+    // Defensively determine the new size.
     let newSize = data.gridSize || oldSize;
     if (data.grid) {
       const gridKeys = Object.keys(data.grid);
@@ -694,8 +691,6 @@ export const Multiplayer = {
     }
 
     // ── Defensively update the local grid ───────────────────────────
-    // We only perform a full reconstruction if the grid doesn't exist
-    // or the size has changed (expansion). Otherwise, we apply deltas.
     if (!State.grid || State.grid.length !== newSize) {
       const safeGrid = Array(newSize).fill(null).map(() => Array(newSize).fill(''));
       if (data.grid) {
@@ -709,9 +704,7 @@ export const Multiplayer = {
       }
       State.grid = safeGrid;
     } else if (data.grid) {
-      // Incremental sync: only iterate over keys present in the update
-      // (Firebase may send the grid as a sparse object or dense array)
-      // Explicitly convert string keys to integers for array indexing
+      // Incremental sync
       Object.keys(data.grid).forEach(rStr => {
         const r = parseInt(rStr, 10);
         if (!isNaN(r) && data.grid[rStr]) {
@@ -733,7 +726,7 @@ export const Multiplayer = {
     State.names         = data.names || State.names;
     State.lastMove      = data.lastMove || null;
 
-    // Validate scoredChains is an array (Firebase may return object if data corrupted)
+    // Validate scoredChains is an array
     const chainsArray = Array.isArray(data.scoredChains) ? data.scoredChains : [];
     State.scoredChains  = new Set(chainsArray);
     State.scoredLines   = data.scoredLines || [];
@@ -748,22 +741,15 @@ export const Multiplayer = {
     // Safety: unlock input if it's now our turn.
     const isMyTurn = State.currentPlayer === State.playerRole;
     if (isMyTurn && State.gameActive) {
-      // If we just received a remote update that makes it our turn,
-      // we MUST be unlocked, unless we are in the middle of a local action
-      // that we're still waiting for (unlikely given the lastModifiedBy check).
-      if (data.lastModifiedBy !== State.userId) {
-        State.isProcessing = false;
-      }
+      State.isProcessing = false;
     }
 
     // ── Re-render ────────────────────────────────────────────────────
     if (oldSize > 0 && State.gridSize > oldSize) {
-      // Grid expanded — play the expansion animation first
+      // Rebuild immediately so the DOM matches the new State.gridSize
+      Render.buildGrid(State.gridSize, oldSize);
       Render.animateGridExpand();
-      setTimeout(() => {
-        Render.buildGrid(State.gridSize, oldSize);
-        Render.redrawAllStrikes(); // Redraw score lines on the new grid size
-      }, GRID_EXPAND_DELAY_MS);
+      Render.redrawAllStrikes();
     } else {
       // Normal cell sync or immediate rebuild for new game
       if (oldSize !== State.gridSize) {

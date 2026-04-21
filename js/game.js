@@ -138,8 +138,9 @@ export function makeMove(r, c, isAI = false) {
   // Synchronise move to Firebase (granular update)
   // Moved to the end of outcome processing to ensure all state changes
   // (turn switch, scores, etc.) are captured in one atomic update.
+  // Synchronise everything to Firebase (Atomic Sync)
   if (State.isMultiplayer) {
-    Multiplayer.pushMove(r, c, player);
+    Multiplayer.syncState();
   }
 }
 
@@ -288,9 +289,9 @@ export function switchTurn(shouldPush = true) {
 
   Render.updateTurnIndicator();
 
-  // Synchronise turn change to Firebase (granular update)
+  // Synchronise turn change to Firebase (Full-State Atomic Sync)
   if (State.isMultiplayer && shouldPush) {
-    Multiplayer.pushStateUpdate({ currentPlayer: State.currentPlayer });
+    Multiplayer.syncState();
   }
 
   // Trigger the AI if it's now the computer's turn
@@ -365,18 +366,23 @@ export function expandGrid() {
     State.isThinking = false;
   }
 
-  // Short delay lets the CSS animation finish before the DOM rebuild
+  // Rebuild the grid DOM IMMEDIATELY so it matches State.gridSize.
+  // This prevents desync where a player clicks or receives a move for a 
+  // 4x4 grid while the DOM is still 3x3.
+  Render.buildGrid(State.gridSize, oldSize);
+  
+  // Play the pulse animation over the now-correct DOM
+  Render.animateGridExpand();
+
+  // Short delay for the "feel" before unlocking input and switching turn
   setTimeout(() => {
-    Render.buildGrid(State.gridSize, oldSize);
     State.isProcessing = false;
     
-    // Switch turn locally without pushing immediately
+    // Switch turn locally (pushing the complete state afterwards)
     switchTurn(false);
 
-    // Push the COMPLETE state (including new grid, gridSize, and turn)
-    // to ensure the opponent stays in perfect sync after the expansion.
     if (State.isMultiplayer) {
-      Multiplayer.pushState();
+      Multiplayer.syncState();
     }
   }, GRID_EXPAND_DELAY_MS);
 }
@@ -414,9 +420,9 @@ export function endGame(winner, reason) {
   App.showScreen('gameover');
   _persistStats();
 
-  // Push final state to Firebase so the remote player sees the result
+  // Push final state to Firebase (Atomic Sync)
   if (State.isMultiplayer) {
-    Multiplayer.pushState();
+    Multiplayer.syncState();
   }
 }
 
