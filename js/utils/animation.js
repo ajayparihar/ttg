@@ -37,29 +37,3 @@ export function autoRemoveAfterAnimation(element, animationName = null) {
   element.addEventListener('animationend', handler, { once: true });
 }
 
-/**
- * Creates a debounced version of a function that delays execution.
- *
- * @param {Function} fn - The function to debounce.
- * @param {number} delay - Delay in milliseconds.
- * @returns {Function} The debounced function.
- */
-export function debounce(fn, delay) {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), delay);
-  };
-}
-
-/**
- * Schedules a function to run after a delay, returning a cancel function.
- *
- * @param {Function} fn - The function to run.
- * @param {number} delay - Delay in milliseconds.
- * @returns {Function} A function that cancels the scheduled execution.
- */
-export function schedule(fn, delay) {
-  const id = setTimeout(fn, delay);
-  return () => clearTimeout(id);
-}

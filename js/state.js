@@ -10,12 +10,11 @@
  * Properties are grouped into logical sections:
  *  1. **Game mode & config** — mode, duration, AI level.
  *  2. **Board state**        — grid, size, current player, scores.
- *  3. **Undo system**        — snapshot and one-shot flag.
- *  4. **Scoring history**    — chain IDs and visual strike lines.
- *  5. **Timers**             — interval and timeout handles.
- *  6. **Zoom / Pan**         — viewport transform state.
- *  7. **UI flags**           — processing lock, pause toggle.
- *  8. **Multiplayer**        — room code, role, user identity.
+ *  3. **Scoring history**    — chain IDs and visual strike lines.
+ *  4. **Timers**             — interval and timeout handles.
+ *  5. **Zoom / Pan**         — viewport transform state.
+ *  6. **UI flags**           — processing lock, pause toggle.
+ *  7. **Multiplayer**        — room code, role, user identity.
  *
  * @module state
  */
@@ -92,32 +91,7 @@ export const State = {
   gameActive: false,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  3. UNDO SYSTEM
-  // ═══════════════════════════════════════════════════════════════════════
-
-  /**
-   * `true` once the player has consumed their single undo.
-   * Each match allows exactly one undo; the button is greyed out afterwards.
-   */
-  undoUsed: false,
-
-  /**
-   * Deep snapshot of board state taken *before* each human move.
-   * Consuming the undo restores this snapshot and sets it to `null`.
-   *
-   * @type {{
-   *   grid: Cell[][],
-   *   scores: { X: number, O: number },
-   *   currentPlayer: string,
-   *   scoredChains: Set<string>,
-   *   scoredLines: Array,
-   *   gridSize: number
-   * } | null}
-   */
-  undoSnapshot: null,
-
-  // ═══════════════════════════════════════════════════════════════════════
-  //  4. SCORING HISTORY
+  //  3. SCORING HISTORY
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
@@ -142,7 +116,7 @@ export const State = {
   lastGridSize: 3,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  5. TIMER & AI HANDLES
+  //  4. TIMER & AI HANDLES
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
@@ -166,7 +140,7 @@ export const State = {
   isThinking: false,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  6. ZOOM / PAN VIEWPORT STATE
+  //  5. ZOOM / PAN VIEWPORT STATE
   // ═══════════════════════════════════════════════════════════════════════
 
   /** Current zoom multiplier (1.0 = 100 %). */
@@ -197,7 +171,7 @@ export const State = {
   panStartY: 0,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  7. UI FLAGS
+  //  6. UI FLAGS
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
@@ -211,7 +185,7 @@ export const State = {
   paused: false,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  8. MULTIPLAYER
+  //  7. MULTIPLAYER
   // ═══════════════════════════════════════════════════════════════════════
 
   /** `true` when the current match is a remote (Firebase) multiplayer game. */
@@ -239,7 +213,7 @@ export const State = {
   userId: null,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  9. AUDIO SETTINGS
+  //  8. AUDIO SETTINGS
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
@@ -255,7 +229,7 @@ export const State = {
   lastMove: null,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  10. AUTH & CUSTOMIZATION
+  //  9. AUTH & CUSTOMIZATION
   // ═══════════════════════════════════════════════════════════════════════
 
   /**
@@ -292,7 +266,7 @@ export const State = {
   loginSkipped: false,
 
   // ═══════════════════════════════════════════════════════════════════════
-  //  11. REMATCH REQUEST STATE
+  //  10. REMATCH REQUEST STATE
   // ═══════════════════════════════════════════════════════════════════════
 
   /**

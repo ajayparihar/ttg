@@ -31,7 +31,7 @@ import { clamp } from './utils.js';
  * @param {Touch[]} touches - Array containing at least two Touch objects.
  * @returns {number} Distance in CSS pixels.
  */
-export function getTouchDist(touches) {
+function getTouchDist(touches) {
   const dx = touches[0].clientX - touches[1].clientX;
   const dy = touches[0].clientY - touches[1].clientY;
   return Math.sqrt(dx * dx + dy * dy);

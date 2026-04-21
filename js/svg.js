@@ -35,7 +35,7 @@ import {
  *
  * @returns {string} An SVG-compatible `transform` value.
  */
-export function randomMarkTransform() {
+function randomMarkTransform() {
   // Random rotation in the range [−MARK_ROT_JITTER, +MARK_ROT_JITTER]
   const rotate = (Math.random() * (MARK_ROT_JITTER * 2) - MARK_ROT_JITTER).toFixed(1);
 
@@ -68,7 +68,7 @@ export function randomMarkTransform() {
  * @param {string} cls  - CSS class(es) to apply (e.g. `'x-mark'`, `'o-mark ghost'`).
  * @returns {string} An HTML string containing the complete `<svg>` element.
  */
-export function makeMarkSvg(char, cls) {
+function makeMarkSvg(char, cls) {
   // Subtle font-size variation: 68–76 px
   const fontSize = 68 + Math.round(Math.random() * 8);
 

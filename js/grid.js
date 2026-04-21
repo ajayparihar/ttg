@@ -108,7 +108,7 @@ export function getChainLength(grid, r, c, dr, dc, player) {
  * @param {string}     player
  * @returns {{ r: number, c: number }} Coordinates of the chain's first cell.
  */
-export function getChainStart(grid, r, c, dr, dc, player) {
+function getChainStart(grid, r, c, dr, dc, player) {
   // Walk backwards until we overshoot the chain
   let sr = r - dr, sc = c - dc;
   while (
@@ -140,7 +140,7 @@ export function getChainStart(grid, r, c, dr, dc, player) {
  * @param {number} len - Total chain length.
  * @returns {string} A canonical string key.
  */
-export function chainId(r, c, dr, dc, len) {
+function chainId(r, c, dr, dc, len) {
   // Normalise so that the "negative" mirror of a direction maps to its
   // positive counterpart.  This prevents the same physical chain from
   // generating two distinct IDs.

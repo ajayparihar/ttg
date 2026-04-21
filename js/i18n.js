@@ -18,7 +18,6 @@ const dict = {
     'winner_x': 'Xi Wins!',
     'winner_o': 'Om Wins!',
     'draw': "It's a Draw!",
-    'undo_ready': 'Undo available',
     'spam_warning': "Don't spam! Wait a bit."
   },
   es: {
@@ -40,7 +39,6 @@ const dict = {
     'winner_x': '¡Xi Gana!',
     'winner_o': '¡Om Gana!',
     'draw': '¡Es un Empate!',
-    'undo_ready': 'Deshacer disponible',
     'spam_warning': '¡No hagas spam! Espera un poco.'
   }
 };

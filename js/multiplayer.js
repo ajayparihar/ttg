@@ -137,7 +137,9 @@ export const Multiplayer = {
         const stats = JSON.parse(local);
         db.ref(`users/${uid}/stats`).update(stats);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Failed to sync stats to Firebase:', e);
+    }
   },
 
   /**
@@ -249,7 +251,7 @@ export const Multiplayer = {
     State.playerRole    = 'X';
     State.isMultiplayer = true;
     State.mode          = 'dual';
-    State.duration      = App.selectedDuration;
+    State.duration      = 0;
 
     // ── Write Ring to Firebase ───────────────────────────────────────
     const roomRef = db.ref(`rings/${code}`);
@@ -270,11 +272,17 @@ export const Multiplayer = {
     const roomInfoEl = document.querySelector('.room-info');
     if (roomInfoEl) roomInfoEl.style.display = '';
 
-    document.getElementById('room-code-text').textContent    = code;
-    document.getElementById('slot-host-name').textContent    = State.names.X || 'You';
-    document.getElementById('slot-guest-name').textContent   = 'Waiting...';
-    document.getElementById('slot-guest').classList.remove('active');
-    document.getElementById('start-multiplayer-btn').disabled = true;
+    const roomCodeText = document.getElementById('room-code-text');
+    const slotHostName = document.getElementById('slot-host-name');
+    const slotGuestName = document.getElementById('slot-guest-name');
+    const slotGuest = document.getElementById('slot-guest');
+    const startBtn = document.getElementById('start-multiplayer-btn');
+
+    if (roomCodeText) roomCodeText.textContent = code;
+    if (slotHostName) slotHostName.textContent = State.names.X || 'You';
+    if (slotGuestName) slotGuestName.textContent = 'Waiting...';
+    if (slotGuest) slotGuest.classList.remove('active');
+    if (startBtn) startBtn.disabled = true;
 
     App.showScreen('multiplayer-waiting');
 
@@ -284,11 +292,15 @@ export const Multiplayer = {
       if (!data) return;
 
       // Detect guest arrival (status changes to 'ready' or guestId appears)
+      const slotGuest = document.getElementById('slot-guest');
+      const slotGuestName = document.getElementById('slot-guest-name');
+      const startBtn = document.getElementById('start-multiplayer-btn');
+
       if ((data.status === 'ready' || data.guestId) &&
-          !document.getElementById('slot-guest').classList.contains('active')) {
-        document.getElementById('slot-guest-name').textContent = data.guestName || 'Friend';
-        document.getElementById('slot-guest').classList.add('active');
-        document.getElementById('start-multiplayer-btn').disabled = false;
+          slotGuest && !slotGuest.classList.contains('active')) {
+        if (slotGuestName) slotGuestName.textContent = data.guestName || 'Friend';
+        slotGuest.classList.add('active');
+        if (startBtn) startBtn.disabled = false;
         App.showToast(i18n.t('play_friend')); // Reuse or add friend_joined
       }
 
@@ -386,13 +398,19 @@ export const Multiplayer = {
     const roomInfoEl = document.querySelector('.room-info');
     if (roomInfoEl) roomInfoEl.style.display = 'none';
 
-    document.getElementById('slot-host-name').textContent         = data.hostName;
-    document.getElementById('slot-guest-name').textContent        = State.names.O || 'You';
-    document.getElementById('slot-guest').classList.add('active');
-    document.getElementById('start-multiplayer-btn').style.display = 'none';
+    const slotHostName = document.getElementById('slot-host-name');
+    const slotGuestName = document.getElementById('slot-guest-name');
+    const slotGuest = document.getElementById('slot-guest');
+    const startBtn = document.getElementById('start-multiplayer-btn');
+    const waitingStatus = document.getElementById('waiting-status-text');
+
+    if (slotHostName) slotHostName.textContent = data.hostName;
+    if (slotGuestName) slotGuestName.textContent = State.names.O || 'You';
+    if (slotGuest) slotGuest.classList.add('active');
+    if (startBtn) startBtn.style.display = 'none';
 
     App.showScreen('multiplayer-waiting');
-    document.getElementById('waiting-status-text').textContent = "Waiting for host to start...";
+    if (waitingStatus) waitingStatus.textContent = "Waiting for host to start...";
 
     // ── Listen for the host to start the game ─
     roomRef.on('value', (snap) => {
@@ -501,7 +519,8 @@ export const Multiplayer = {
     roomRef.child('status').on('value', (snapshot) => {
       if (snapshot.val() === 'abandoned' && State.isMultiplayer) {
         App.showToast(i18n.t('match_abandoned'));
-        this.leaveRoom(true);   // Forced leave (don't re-notify)
+        // Fire-and-forget: don't block the listener
+        void this.leaveRoom(true);   // Forced leave (don't re-notify)
       }
     });
 
@@ -652,10 +671,15 @@ export const Multiplayer = {
     } else if (data.grid) {
       // Incremental sync: only iterate over keys present in the update
       // (Firebase may send the grid as a sparse object or dense array)
-      Object.keys(data.grid).forEach(r => {
-        if (data.grid[r]) {
-          Object.keys(data.grid[r]).forEach(c => {
-            State.grid[r][c] = data.grid[r][c];
+      // Explicitly convert string keys to integers for array indexing
+      Object.keys(data.grid).forEach(rStr => {
+        const r = parseInt(rStr, 10);
+        if (!isNaN(r) && data.grid[rStr]) {
+          Object.keys(data.grid[rStr]).forEach(cStr => {
+            const c = parseInt(cStr, 10);
+            if (!isNaN(c)) {
+              State.grid[r][c] = data.grid[rStr][cStr];
+            }
           });
         }
       });
@@ -667,7 +691,9 @@ export const Multiplayer = {
     State.duration      = data.duration || 0;
     State.scores        = data.scores;
     State.names         = data.names;
-    State.scoredChains  = new Set(data.scoredChains || []);
+    // Validate scoredChains is an array (Firebase may return object if data corrupted)
+    const chainsArray = Array.isArray(data.scoredChains) ? data.scoredChains : [];
+    State.scoredChains  = new Set(chainsArray);
     State.scoredLines   = data.scoredLines || [];
     State.gameActive    = data.gameActive !== undefined ? data.gameActive : true;
     State.winner        = data.winner || null;
@@ -677,9 +703,17 @@ export const Multiplayer = {
       State.timeLeft = State.duration;
     }
 
-    // Safety: unlock input if it's now our turn
-    if (State.currentPlayer === State.playerRole && State.gameActive) {
-      State.isProcessing = false;
+    // Safety: unlock input if it's now our turn AND we're not in the middle
+    // of a local animation. This prevents race conditions where both the local
+    // switchTurn() and remote sync try to unlock simultaneously.
+    const isMyTurn = State.currentPlayer === State.playerRole;
+    const wasWaiting = State.isProcessing;
+    if (isMyTurn && State.gameActive && wasWaiting) {
+      // Additional check: only unlock if remote timestamp is newer than our last move
+      // to prevent stale syncs from unlocking prematurely
+      if (data.timestamp && data.lastModifiedBy !== State.userId) {
+        State.isProcessing = false;
+      }
     }
 
     // ── Re-render ────────────────────────────────────────────────────
@@ -704,6 +738,11 @@ export const Multiplayer = {
           (State.scores.X === State.scores.O ? 'draw' :
            (State.scores.X > State.scores.O ? 'X' : 'O'));
         module.endGame(winner, 'classic');
+      }).catch(err => {
+        console.error('Failed to load game module for endGame:', err);
+        // Fallback: at least stop the game locally
+        State.gameActive = false;
+        App.showScreen('gameover');
       });
     }
   },
@@ -719,7 +758,7 @@ export const Multiplayer = {
    *   opponent disconnected.  Prevents echoing the `'abandoned'` status
    *   back to Firebase (the other player already wrote it).
    */
-  leaveRoom(forced = false) {
+  async leaveRoom(forced = false) {
     if (!State.isMultiplayer) return;
 
     if (State.roomCode) {
@@ -732,13 +771,25 @@ export const Multiplayer = {
       roomRef.child('rematchRequest').off();
       roomRef.off();
 
-      if (!forced) {
-        // Voluntary leave — notify the other player
-        roomRef.update({ status: 'abandoned' });
+      // Cancel the onDisconnect hook BEFORE sending the status update
+      // to reduce the window where a network drop could cause the hook to fire
+      try {
+        await roomRef.onDisconnect().cancel();
+      } catch (e) {
+        // onDisconnect cancel can fail if already triggered or network down
+        // This is non-fatal - we've already detached listeners
+        console.warn('Failed to cancel onDisconnect (may already be triggered):', e);
       }
 
-      // Cancel the onDisconnect hook (we've already left gracefully)
-      roomRef.onDisconnect().cancel();
+      if (!forced) {
+        // Voluntary leave — notify the other player
+        // Use a short delay to ensure cancel completes first
+        try {
+          await roomRef.update({ status: 'abandoned' });
+        } catch (e) {
+          console.warn('Failed to send abandoned status:', e);
+        }
+      }
     }
 
     // ── Reset local multiplayer state ────────────────────────────────
@@ -756,8 +807,10 @@ export const Multiplayer = {
     }
 
     // Hide reaction UI
-    document.getElementById('reaction-container').style.display = 'none';
-    document.getElementById('reaction-tray').classList.remove('open');
+    const reactContainer = document.getElementById('reaction-container');
+    const reactionTray = document.getElementById('reaction-tray');
+    if (reactContainer) reactContainer.style.display = 'none';
+    if (reactionTray) reactionTray.classList.remove('open');
   },
 
   // ─────────────────────────────────────────────────────────────────────

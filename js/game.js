@@ -20,7 +20,6 @@ import { State } from './state.js';
 import { Render, setCellClickHandler } from './render.js';
 import { AI } from './ai.js';
 import {
-  UNDO_ENABLED,
   GRID_EXPAND_DELAY_MS,
   WIN_END_DELAY_MS,
   AI_THINKING_DELAY_MIN_MS,
@@ -107,9 +106,8 @@ setCellClickHandler(handleCellClick);
  *
  * **Flow:**
  *  1. Final guard: bail if the game ended or the cell is occupied.
- *  2. Snapshot the board for undo (human moves only).
- *  3. Place the mark in State and update the DOM.
- *  4. Delegate outcome processing to the appropriate handler based on
+ *  2. Place the mark in State and update the DOM.
+ *  3. Delegate outcome processing to the appropriate handler based on
  *     board size (3×3 classic rules vs 4×4+ scoring rules).
  *
  * @param {number}  r      - Row index.
@@ -120,20 +118,6 @@ export function makeMove(r, c, isAI = false) {
   if (!State.gameActive || State.grid[r][c]) return;
 
   State.isProcessing = true;
-
-  // ── Save undo snapshot before every human move ─────────────────────
-  // (AI moves are excluded — the undo should revert to "before the
-  //  human's last move", not to "before the AI's response".)
-  if (!isAI) {
-    State.undoSnapshot = {
-      grid:          copyGrid(State.grid),
-      scores:        { ...State.scores },
-      currentPlayer: State.currentPlayer,
-      scoredChains:  new Set(State.scoredChains),
-      scoredLines:   [...State.scoredLines],
-      gridSize:      State.gridSize,
-    };
-  }
 
   // ── Place the mark ─────────────────────────────────────────────────
   const player       = State.currentPlayer;
@@ -372,6 +356,13 @@ export function expandGrid() {
   // Lock input during the expansion animation
   State.isProcessing = true;
 
+  // Clear any pending AI timeout to prevent AI move after expansion
+  if (State.aiTimeout) {
+    clearTimeout(State.aiTimeout);
+    State.aiTimeout = null;
+    State.isThinking = false;
+  }
+
   // Short delay lets the CSS animation finish before the DOM rebuild
   setTimeout(() => {
     Render.buildGrid(State.gridSize, oldSize);
@@ -587,5 +578,7 @@ function _persistStats() {
 export function clearTimers() {
   if (State.timerInterval) { clearInterval(State.timerInterval); State.timerInterval = null; }
   if (State.aiTimeout)     { clearTimeout(State.aiTimeout);      State.aiTimeout     = null; }
+  // Reset thinking state to prevent stuck UI indicator
+  State.isThinking = false;
 }
 

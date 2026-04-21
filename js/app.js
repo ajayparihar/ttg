@@ -9,7 +9,6 @@
  *  - **Screen navigation**  — show/hide screen panels.
  *  - **Game lifecycle**     — startGame, initGame, rematch, quit.
  *  - **Countdown timer**    — start, tick, and timeout handling.
- *  - **Undo**               — one-shot rewind of the last human move.
  *  - **Zoom**               — button-driven zoom in/out/reset.
  *  - **Pause modal**        — pause, resume, quit.
  *  - **Settings & themes**  — colour theme selection and persistence.
@@ -22,7 +21,7 @@
 
 import { State } from './state.js';
 import { Render } from './render.js';
-import { MODE, ZOOM_STEP, MAX_ZOOM, UNDO_ENABLED, GOOGLE_SIGNIN_ENABLED } from './constants.js';
+import { ZOOM_STEP, MAX_ZOOM, GOOGLE_SIGNIN_ENABLED } from './constants.js';
 import { createGrid } from './grid.js';
 import { clearTimers, triggerAI, endGame } from './game.js';
 import { clamp, hapticFeedback, hapticPattern, HapticPresets } from './utils.js';
@@ -37,32 +36,6 @@ export const App = {
    * @type {string}
    */
   currentScreen: 'login',
-
-  /**
-   * Duration (in seconds) chosen on the menu but not yet committed
-   * to {@link State.duration}.
-   * @type {number}
-   */
-  selectedDuration: 0,
-
-  // ─────────────────────────────────────────────────────────────────────
-  //  Mode defaults
-  // ─────────────────────────────────────────────────────────────────────
-
-  /**
-   * Pre-loads mode-specific settings before navigating to the next screen.
-   *
-   * When the {@link MODE} feature flag is `false`, the duration selection
-   * screen is skipped entirely and the game defaults to unlimited time.
-   *
-   * @param {'single'|'dual'} mode - The chosen game mode.
-   */
-  setupModeDefaults(mode) {
-    this.selectedMode = mode;
-    if (!MODE) {
-      this.selectedDuration = 0;
-    }
-  },
 
   // ─────────────────────────────────────────────────────────────────────
   //  Screen navigation
@@ -91,7 +64,7 @@ export const App = {
         if (!GOOGLE_SIGNIN_ENABLED) {
           multiBtn.classList.remove('btn-disabled');
           multiBtn.title = "";
-          multiBtn.onclick = () => { this.setupModeDefaults('dual'); this.showScreen('multiplayer-lobby'); };
+          multiBtn.onclick = () => { this.showScreen('multiplayer-lobby'); };
         } else if (State.loginSkipped) {
           multiBtn.classList.add('btn-disabled');
           multiBtn.title = "Login with Google to play online.";
@@ -103,59 +76,26 @@ export const App = {
         } else {
           multiBtn.classList.remove('btn-disabled');
           multiBtn.title = "";
-          multiBtn.onclick = () => { this.setupModeDefaults('dual'); this.showScreen('multiplayer-lobby'); };
+          multiBtn.onclick = () => { this.showScreen('multiplayer-lobby'); };
         }
       }
     }
   },
 
   /**
-   * Navigates to the mode/duration selection screen and labels it with
-   * the chosen game mode.
-   *
-   * When {@link MODE} is `false`, skips the duration screen and goes
-   * straight to the name-input screen with unlimited duration.
+   * Starts a local game (single vs AI or dual player).
+   * Goes directly to the name-input screen.
    *
    * @param {'single'|'dual'} mode - `'single'` for AI, `'dual'` for local PvP.
    */
-  goToMode(mode) {
-    this.setupModeDefaults(mode);
+  startLocalGame(mode) {
+    this.selectedMode = mode;
 
-    if (MODE) {
-      // Show the duration selection screen with a descriptive title
-      const label = mode === 'single' ? 'Single Player' : 'Dual Player';
-      document.getElementById('mode-screen-title').textContent = `${label} — Duration`;
-      this.showScreen('mode');
-    } else {
-      // Skip duration selection — go straight to name input
-      // Hide the O-name field when playing against the AI
-      document.getElementById('name-o-group').style.display =
-        this.selectedMode === 'single' ? 'none' : '';
-
-      this.showScreen('name');
-    }
-  },
-
-  /**
-   * Highlights the chosen duration button and advances to the name-input
-   * screen.  Also hides the Player O field when playing against the AI.
-   *
-   * @param {number} dur - Duration in seconds; `0` = unlimited.
-   */
-  selectDuration(dur) {
-    this.selectedDuration = dur;
-
-    // Highlight the selected duration button
-    document.querySelectorAll('.duration-btn').forEach(btn => {
-      btn.classList.toggle('selected', parseInt(btn.dataset.dur, 10) === dur);
-    });
-
-    // Quick transition to name input
-    setTimeout(() => this.showScreen('name'), 50);
-
-    // Hide the O-name field in single-player mode
+    // Hide the O-name field when playing against the AI
     document.getElementById('name-o-group').style.display =
-      this.selectedMode === 'single' ? 'none' : '';
+      mode === 'single' ? 'none' : '';
+
+    this.showScreen('name');
   },
 
   /**
@@ -171,8 +111,9 @@ export const App = {
   // ─────────────────────────────────────────────────────────────────────
 
   /**
-   * Reads the name inputs, commits the chosen mode and duration to
+   * Reads the name inputs, commits the chosen mode to
    * {@link State}, and initialises a new game.
+   * Duration is always unlimited (0).
    *
    * Default names are used when the player leaves the input blank:
    *  - Player X → `"Xi"`.
@@ -186,7 +127,7 @@ export const App = {
       : (sanitize(document.getElementById('name-o').value.trim()) || 'Om');
 
     State.mode     = this.selectedMode;
-    State.duration = this.selectedDuration;
+    State.duration = 0;
     State.names    = { X: nameX, O: nameO };
 
     this.initGame();
@@ -203,7 +144,7 @@ export const App = {
    *  1. Clear any running timers.
    *  2. Reset all State properties to defaults.
    *  3. Randomise the first mover with a coin flip.
-   *  4. Sync the HUD (scores, badges, undo button).
+   *  4. Sync the HUD (scores, badges).
    *  5. Switch to the game screen.
    *  6. After a 100 ms layout delay, build the grid, set zoom, update
    *     the turn indicator, start the timer, and trigger the AI if needed.
@@ -218,8 +159,6 @@ export const App = {
     State.scores        = { X: 0, O: 0 };
     State.timeLeft      = State.duration;
     State.gameActive    = true;
-    State.undoUsed      = false;
-    State.undoSnapshot  = null;
     State.scoredChains  = new Set();
     State.scoredLines   = [];
     State.zoomLevel     = 1.0;
@@ -232,13 +171,6 @@ export const App = {
     // ── Sync HUD with new State ──────────────────────────────────────
     Render.updateScore('X');
     Render.updateScore('O');
-
-    // Reset the one-shot undo button
-    const undoBtn = document.getElementById('undo-btn');
-    undoBtn.disabled = false;
-    undoBtn.classList.remove('used');
-    undoBtn.title = 'Undo last move (1 use)';
-    undoBtn.style.visibility = UNDO_ENABLED ? 'visible' : 'hidden';
 
     // Show/hide multiplayer-only reactions
     const reactContainer = document.getElementById('reaction-container');
@@ -260,62 +192,6 @@ export const App = {
     }
 
     this.showToast(`${State.names[State.currentPlayer]} goes first!`, 1500);
-  },
-
-  // ─────────────────────────────────────────────────────────────────────
-  //  Undo (one-shot per game)
-  // ─────────────────────────────────────────────────────────────────────
-
-  /**
-   * Reverts the board to the snapshot taken before the last human move.
-   *
-   * **Restrictions:**
-   *  - Limited to one use per game.
-   *  - Disabled during the AI's turn.
-   *  - Disabled in multiplayer mode.
-   *
-   * Cancels any pending AI move, restores the snapshot, greys out the
-   * undo button, and rebuilds the board.
-   */
-  undo() {
-    if (!UNDO_ENABLED) return;                                               // Undo is disabled by constant
-    if (State.undoUsed || !State.undoSnapshot || !State.gameActive) return;
-    if (State.isMultiplayer) return;                                         // Undo is disabled online
-    if (State.mode === 'single' && State.currentPlayer === 'O') return;     // Can't undo during AI's turn
-
-    // Cancel any pending AI move
-    clearTimeout(State.aiTimeout);
-    const aiThinking = document.getElementById('ai-thinking');
-    if (aiThinking) aiThinking.style.display = 'none';
-
-    // Restore the pre-move snapshot
-    const snap          = State.undoSnapshot;
-    State.grid          = snap.grid;
-    State.scores        = { ...snap.scores };
-    State.currentPlayer = snap.currentPlayer;
-    State.scoredChains  = new Set(snap.scoredChains);
-    State.scoredLines   = [...snap.scoredLines];
-    State.gridSize      = snap.gridSize;
-    State.undoUsed      = true;
-    State.undoSnapshot  = null;
-    State.lastMove      = null;
-
-    // Grey out the undo button — one use only
-    const undoBtn = document.getElementById('undo-btn');
-    undoBtn.disabled = true;
-    undoBtn.classList.add('used');
-
-    // Rebuild the board and re-sync the HUD
-    Render.buildGrid(State.gridSize);
-    Render.updateScore('X');
-    Render.updateScore('O');
-    Render.updateTurnIndicator();
-    Render.setZoomDisplay(State.zoomLevel);
-
-    this.showToast('Undo used!');
-
-    // Haptic feedback for undo action
-    hapticPattern(HapticPresets.UNDO);
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -382,8 +258,8 @@ export const App = {
    * Quits the current game, cleans up timers, and returns to the
    * main menu (or leaves the multiplayer room).
    */
-  quitGame() {
-    this._exitToMenu();
+  async quitGame() {
+    await this._exitToMenu();
     document.getElementById('pause-overlay').style.display = 'none';
     document.getElementById('pause-modal').style.display   = 'none';
   },
@@ -422,13 +298,13 @@ export const App = {
     const subtitle = document.getElementById('rematch-subtitle');
     const status = document.getElementById('rematch-status');
 
-    title.textContent = 'Rematch Request';
-    subtitle.textContent = `${opponentName} wants a rematch!`;
-    status.textContent = '';
-    modal.classList.remove('waiting');
+    if (title) title.textContent = 'Rematch Request';
+    if (subtitle) subtitle.textContent = `${opponentName} wants a rematch!`;
+    if (status) status.textContent = '';
+    if (modal) modal.classList.remove('waiting');
 
-    overlay.style.display = 'block';
-    modal.style.display = 'flex';
+    if (overlay) overlay.style.display = 'block';
+    if (modal) modal.style.display = 'flex';
   },
 
   /**
@@ -446,17 +322,17 @@ export const App = {
     const declineBtn = document.getElementById('rematch-decline-btn');
     const status = document.getElementById('rematch-status');
 
-    title.textContent = 'Rematch Requested';
-    subtitle.textContent = 'Waiting for opponent to accept...';
-    status.textContent = '';
-    modal.classList.add('waiting');
+    if (title) title.textContent = 'Rematch Requested';
+    if (subtitle) subtitle.textContent = 'Waiting for opponent to accept...';
+    if (status) status.textContent = '';
+    if (modal) modal.classList.add('waiting');
 
     // Hide buttons in waiting state
-    acceptBtn.style.display = 'none';
-    declineBtn.style.display = 'none';
+    if (acceptBtn) acceptBtn.style.display = 'none';
+    if (declineBtn) declineBtn.style.display = 'none';
 
-    overlay.style.display = 'block';
-    modal.style.display = 'flex';
+    if (overlay) overlay.style.display = 'block';
+    if (modal) modal.style.display = 'flex';
   },
 
   /**
@@ -470,13 +346,15 @@ export const App = {
     const acceptBtn = document.getElementById('rematch-accept-btn');
     const declineBtn = document.getElementById('rematch-decline-btn');
 
-    overlay.style.display = 'none';
-    modal.style.display = 'none';
-    modal.classList.remove('waiting');
+    if (overlay) overlay.style.display = 'none';
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('waiting');
+    }
 
     // Restore buttons for next time
-    acceptBtn.style.display = '';
-    declineBtn.style.display = '';
+    if (acceptBtn) acceptBtn.style.display = '';
+    if (declineBtn) declineBtn.style.display = '';
   },
 
   /**
@@ -485,15 +363,15 @@ export const App = {
    */
   updateRematchStatus(message) {
     const status = document.getElementById('rematch-status');
-    status.textContent = message;
+    if (status) status.textContent = message;
   },
 
   /**
    * Returns to the main menu from any screen.
    * Cleans up timers and leaves the multiplayer room if active.
    */
-  goHome() {
-    this._exitToMenu();
+  async goHome() {
+    await this._exitToMenu();
   },
 
   /**
@@ -501,10 +379,11 @@ export const App = {
    * deactivates the game, and navigates to menu or leaves room.
    * @private
    */
-  _exitToMenu() {
+  async _exitToMenu() {
     State.gameActive = false;
     clearTimers();
-    if (State.isMultiplayer) Multiplayer.leaveRoom();
+    Tutorial.clear(); // Clean up any active tutorial timeouts
+    if (State.isMultiplayer) await Multiplayer.leaveRoom();
     else this.showScreen('menu');
   },
 
@@ -548,6 +427,7 @@ export const App = {
 
     } catch (err) {
       console.warn('Stats UI update failed:', err);
+      this.showToast('Failed to load statistics.');
     }
   },
 
@@ -566,6 +446,19 @@ export const App = {
     State.loginSkipped = true;
     Multiplayer.initId(); // Initialize anonymous auth
     this.showScreen('menu');
+  },
+
+  /**
+   * Escapes HTML special characters to prevent XSS injection.
+   * @param {string} str - Raw string that may contain HTML.
+   * @returns {string} Escaped string safe for HTML insertion.
+   * @private
+   */
+  _escapeHtml(str) {
+    if (typeof str !== 'string') return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
   },
 
   /** Updates the menu UI with Google profile data if logged in. */
@@ -596,15 +489,39 @@ export const App = {
 
     if (!State.userProfile) return;
 
-    container.innerHTML = `
-      <div class="user-profile">
-        <img src="${State.userProfile.photo}" alt="Profile" class="user-avatar">
-        <div class="user-info">
-          <span class="user-name">${State.userProfile.name}</span>
-          <button class="user-logout-btn" onclick="Multiplayer.logout()">Sign Out</button>
-        </div>
-      </div>
-    `;
+    // Build DOM safely to prevent XSS from malicious profile data
+    const profile = State.userProfile;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'user-profile';
+
+    const img = document.createElement('img');
+    img.src = profile.photo || '';
+    img.alt = 'Profile';
+    img.className = 'user-avatar';
+    // Validate image URL scheme to prevent javascript: protocol injection
+    if (img.src && !img.src.match(/^https?:\/\//i)) {
+      img.src = '';
+    }
+
+    const info = document.createElement('div');
+    info.className = 'user-info';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'user-name';
+    nameSpan.textContent = profile.name || 'User';
+
+    const btn = document.createElement('button');
+    btn.className = 'user-logout-btn';
+    btn.textContent = 'Sign Out';
+    btn.onclick = () => Multiplayer.logout();
+
+    info.appendChild(nameSpan);
+    info.appendChild(btn);
+    wrapper.appendChild(img);
+    wrapper.appendChild(info);
+
+    container.innerHTML = '';
+    container.appendChild(wrapper);
 
     // Hide login button on other screens if needed
     const loginBtn = document.getElementById('google-login-btn');
@@ -686,6 +603,7 @@ export const App = {
       localStorage.setItem('ttg_emojis', JSON.stringify(State.activeEmojis));
     } catch (err) {
       console.warn('Failed to save emojis:', err);
+      this.showToast('Failed to save emoji preferences.');
     }
 
     this.updateEmojiUI();
@@ -726,7 +644,7 @@ export const App = {
   /** Starts interactive tutorial */
   startTutorial() {
     this.closeHelp();
-    this.setupModeDefaults('dual');
+    this.selectedMode = 'dual';
     State.names = { X: 'You', O: 'Tutor' };
     State.mode = 'dual';
     State.duration = 0;
@@ -759,6 +677,7 @@ export const App = {
       this.showToast(`Default mode: ${mode === 'single' ? 'Single Player' : 'Dual Player'}`);
     } catch (err) {
       console.warn('Failed to save game mode:', err);
+      this.showToast('Failed to save game mode preference.');
     }
   },
 
@@ -766,10 +685,11 @@ export const App = {
    * Applies a colour theme to the document root and persists the choice.
    * Checks locks first.
    * @param {string} name - Theme key.
+   * @param {boolean} [silent=false] - If true, skip haptic feedback (for init).
    */
-  setTheme(name) {
-    // Haptic feedback for theme selection
-    hapticFeedback(HapticPresets.BUTTON);
+  setTheme(name, silent = false) {
+    // Haptic feedback for theme selection (skip during initialization)
+    if (!silent) hapticFeedback(HapticPresets.BUTTON);
 
     document.documentElement.dataset.theme = name;
 
@@ -780,6 +700,7 @@ export const App = {
 
     try { localStorage.setItem('ttg_theme', name); } catch (err) {
       console.warn('Failed to save theme:', err);
+      this.showToast('Failed to save theme preference.');
     }
     this.showToast(`Theme: ${name.charAt(0).toUpperCase() + name.slice(1)}`);
   },
@@ -800,6 +721,7 @@ export const App = {
 
     try { localStorage.setItem('ttg_sound', State.soundEnabled ? 'on' : 'off'); } catch (err) {
       console.warn('Failed to save sound setting:', err);
+      this.showToast('Failed to save sound preference.');
     }
     this.showToast(State.soundEnabled ? 'Sound On' : 'Sound Muted');
   },
@@ -1012,7 +934,7 @@ export const App = {
     try {
       const savedTheme = localStorage.getItem('ttg_theme');
       if (savedTheme) {
-        this.setTheme(savedTheme);
+        this.setTheme(savedTheme, true); // silent: no haptic during init
       } else {
         // Auto-detect system preference on first visit
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1020,10 +942,10 @@ export const App = {
 
         if (prefersLight) {
           // Use DAG Light for light mode preference
-          this.setTheme('dag-light');
+          this.setTheme('dag-light', true); // silent: no haptic during init
         } else {
           // Use DAG Dark as default (also for dark mode or no preference)
-          this.setTheme('dag-dark');
+          this.setTheme('dag-dark', true); // silent: no haptic during init
         }
       }
     } catch (err) {

@@ -31,17 +31,6 @@ export function clamp(val, min, max) {
 }
 
 /**
- * Returns a random integer between `min` and `max` (both inclusive).
- *
- * @param {number} min - Lower bound (inclusive).
- * @param {number} max - Upper bound (inclusive).
- * @returns {number} A random integer in [min, max].
- */
-export function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-/**
  * Returns a random element from an array, or `null` if the array is empty.
  *
  * @template T
@@ -100,8 +89,6 @@ export const HapticPresets = {
   TURN_SWITCH: 8,
   /** Button press feedback */
   BUTTON: 5,
-  /** Undo action feedback */
-  UNDO: [15, 20, 15],
   /** Urgent timer warning */
   URGENT: [20, 30, 20, 30, 20],
   /** Grid expansion celebration */

@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     Multiplayer.joinRoom();
   }
 
-  /* ---- 4. Name-input field behaviour ---- */
+  /* ---- 6. Name-input field behaviour ---- */
 
   // Clear any browser-autofilled values so the placeholder text shows
   const nameX = document.getElementById('name-x');

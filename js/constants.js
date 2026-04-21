@@ -23,7 +23,7 @@
  * Hard cap on the score a single chain can yield.
  * Chains of 7 or more marks always award this value.
  */
-export const MAX_CHAIN_SCORE = 50;
+const MAX_CHAIN_SCORE = 50;
 
 /**
  * Default AI difficulty level on a 1–10 scale.
@@ -32,20 +32,6 @@ export const MAX_CHAIN_SCORE = 50;
  *   - 10 = uses look-ahead and minimax on 3×3 boards.
  */
 export const LEVEL = 6;
-
-/**
- * Feature flag controlling duration selection.
- *   - `true`  → show all duration choices (1 / 2 / 3 / 5 min / unlimited).
- *   - `false` → skip the duration screen entirely; default to unlimited (0 s).
- */
-export const MODE = false;
-
-/**
- * Feature flag controlling the undo button.
- *   - `true`  → show undo button (single use per game).
- *   - `false` → hide undo button entirely.
- */
-export const UNDO_ENABLED = false;
 
 /**
  * Feature flag controlling Google Sign-in / Firebase Auth integration.
@@ -134,23 +120,8 @@ export const STRIKE_CURVE_BASE = 18;
 export const STRIKE_CURVE_JITTER = 5;
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  ANIMATION DURATIONS (ms) - Sync with CSS animations
+//  TIMING CONSTANTS (ms)
 // ═══════════════════════════════════════════════════════════════════════════
-
-/** Mark appearance animation duration (matches CSS markAppear). */
-export const ANIM_MARK_APPEAR_MS = 300;
-
-/** Grid expansion animation duration (matches CSS gridExpand). */
-export const ANIM_GRID_EXPAND_MS = 800;
-
-/** Win strike line draw animation (matches CSS drawStrike). */
-export const ANIM_STRIKE_DRAW_MS = 500;
-
-/** Floating score animation duration (matches CSS floatUp). */
-export const ANIM_FLOAT_SCORE_MS = 1200;
-
-/** Sparkle particle lifetime. */
-export const ANIM_SPARKLE_MS = 800;
 
 /** Grid expansion delay before DOM rebuild. */
 export const GRID_EXPAND_DELAY_MS = 300;

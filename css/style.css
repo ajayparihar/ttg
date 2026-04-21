@@ -570,42 +570,6 @@ body {
   font-size: 14px;
 }
 
-/* ============================================================
-   DURATION SELECTION
-   ============================================================ */
-.duration-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  width: 100%;
-  max-width: 380px;
-  margin: 24px 0;
-}
-
-.duration-btn {
-  flex-direction: column;
-  gap: 4px;
-  padding: 16px 8px;
-  border-radius: var(--radius);
-}
-
-.duration-btn .dur-label {
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.duration-btn .dur-sub {
-  font-size: 10px;
-  opacity: 0.6;
-  font-weight: 400;
-}
-
-/* Highlighted selected duration */
-.duration-btn.selected {
-  border-color: var(--accent);
-  background: rgba(0,255,136,0.08);
-  color: var(--accent);
-}
 
 /* ============================================================
    NAME INPUT
@@ -1044,17 +1008,6 @@ body {
   color: var(--fg-secondary);
   text-align: center;
   font-style: italic;
-}
-
-/* Undo button — greyed once used */
-.undo-btn {
-  position: relative;
-}
-
-.undo-btn.used {
-  opacity: 0.35;
-  cursor: not-allowed;
-  text-decoration: line-through;
 }
 
 .zoom-display {
@@ -1728,15 +1681,6 @@ body {
   .game-controls { padding: 8px 12px; }
   .scores-bar { gap: 4px; }
   .score-block { padding: 2px 8px; }
-
-  .duration-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 360px) {
-  .duration-grid { grid-template-columns: repeat(2, 1fr); }
-  .duration-btn .dur-label { font-size: 18px; }
 }
 
 @media (min-width: 768px) {

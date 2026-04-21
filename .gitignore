@@ -4,3 +4,16 @@ node_modules/
 package-lock.json
 package.json
 *.windsurf
+.DS_Store
+Thumbs.db
+*.log
+.env
+.env.local
+.cache/
+dist/
+build/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~

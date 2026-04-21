@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ttg-v2';
+const CACHE_NAME = 'ttg-v' + new Date().toISOString().slice(0,10).replace(/-/g,'');
 const ASSETS = [
   './',
   './index.html',

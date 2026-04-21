@@ -5,11 +5,32 @@ import { makeMove } from './game.js';
 export const Tutorial = {
   step: 0,
   active: false,
+  _timeouts: [],
 
   start() {
+    this.clear();
     this.active = true;
     this.step = 1;
     this.showStep();
+  },
+
+  _setTimeout(fn, delay) {
+    const id = setTimeout(() => {
+      this._timeouts = this._timeouts.filter(t => t !== id);
+      fn();
+    }, delay);
+    this._timeouts.push(id);
+    return id;
+  },
+
+  clear() {
+    this._timeouts.forEach(clearTimeout);
+    this._timeouts = [];
+    this.active = false;
+    this.step = 0;
+    const hint = document.getElementById('tutorial-hint');
+    if (hint) hint.style.display = 'none';
+    this.clearHighlights();
   },
 
   showStep() {
@@ -35,7 +56,8 @@ export const Tutorial = {
         this.highlightCell(0, 1);
         this.highlightCell(0, 2);
         localStorage.setItem('ttg_tutorial_done', 'true');
-        setTimeout(() => {
+        this._setTimeout(() => {
+          if (!this.active) return;
           hint.style.display = 'none';
           this.active = false;
         }, 8000);
@@ -63,7 +85,8 @@ export const Tutorial = {
     if (!this.active) return true;
 
     if (this.step === 1 && r === 1 && c === 1) {
-      setTimeout(() => {
+      this._setTimeout(() => {
+        if (!this.active) return;
         makeMove(0, 1, true); // Tutor move
         this.nextStep();
       }, 600);
@@ -71,14 +94,15 @@ export const Tutorial = {
     }
     if (this.step === 2 && r === 0 && c === 0) {
       // Setup a tie scenario
-      setTimeout(() => {
+      this._setTimeout(() => {
+        if (!this.active) return;
         // Fill the rest for a tie
         makeMove(0, 2, true);
-        setTimeout(() => makeMove(1, 0, true), 300);
-        setTimeout(() => makeMove(1, 2, true), 600);
-        setTimeout(() => makeMove(2, 0, true), 900);
-        setTimeout(() => makeMove(2, 1, true), 1200);
-        setTimeout(() => makeMove(2, 2, true), 1500);
+        this._setTimeout(() => { if (this.active) makeMove(1, 0, true); }, 300);
+        this._setTimeout(() => { if (this.active) makeMove(1, 2, true); }, 600);
+        this._setTimeout(() => { if (this.active) makeMove(2, 0, true); }, 900);
+        this._setTimeout(() => { if (this.active) makeMove(2, 1, true); }, 1200);
+        this._setTimeout(() => { if (this.active) makeMove(2, 2, true); }, 1500);
       }, 600);
       return true;
     }

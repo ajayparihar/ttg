@@ -133,12 +133,12 @@
   </div>
 
   <div class="menu-buttons">
-    <button class="btn btn-primary" onclick="App.goToMode('single')" data-i18n="single_player">
+    <button class="btn btn-primary" onclick="App.startLocalGame('single')" data-i18n="single_player">
       <i class="fa-solid fa-user" aria-hidden="true"></i> Single Player
     </button>
-    <button class="btn btn-primary" onclick="App.goToMode('dual')" data-i18n="dual_player">
+    <button class="btn btn-primary" onclick="App.startLocalGame('dual')" data-i18n="dual_player">
       <i class="fa-solid fa-user-group" aria-hidden="true"></i> Dual Player</button>
-    <button class="btn btn-secondary" onclick="App.setupModeDefaults('dual'); App.showScreen('multiplayer-lobby')" data-i18n="play_friend">
+    <button class="btn btn-secondary" onclick="App.showScreen('multiplayer-lobby')" data-i18n="play_friend">
       <i class="fa-solid fa-ring" aria-hidden="true"></i> Join a Ring</button>
   </div>
 
@@ -188,41 +188,6 @@
         <button class="btn btn-primary" onclick="Multiplayer.joinRoom()">Join</button>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- ============================================================
-     SCREEN: MODE / DURATION SELECTION
-     ============================================================ -->
-<div id="mode-screen" class="screen">
-  <div class="screen-header">
-    <button class="btn btn-icon screen-back-btn" onclick="App.goBack('menu')" aria-label="Back to Menu">←</button>
-    <h2 class="screen-title" id="mode-screen-title">Select Duration</h2>
-  </div>
-
-  <p class="section-subtitle">How long should the match last?</p>
-
-  <div class="duration-grid">
-    <button class="btn duration-btn" data-dur="60" onclick="App.selectDuration(60)">
-      <span class="dur-label">1</span>
-      <span class="dur-sub">Minute</span>
-    </button>
-    <button class="btn duration-btn" data-dur="180" onclick="App.selectDuration(180)">
-      <span class="dur-label">3</span>
-      <span class="dur-sub">Minutes</span>
-    </button>
-    <button class="btn duration-btn" data-dur="300" onclick="App.selectDuration(300)">
-      <span class="dur-label">5</span>
-      <span class="dur-sub">Minutes</span>
-    </button>
-    <button class="btn duration-btn" data-dur="600" onclick="App.selectDuration(600)">
-      <span class="dur-label">10</span>
-      <span class="dur-sub">Minutes</span>
-    </button>
-    <button class="btn duration-btn" data-dur="0" onclick="App.selectDuration(0)">
-      <span class="dur-label">∞</span>
-      <span class="dur-sub">Unlimited</span>
-    </button>
   </div>
 </div>
 
@@ -353,11 +318,6 @@
   <!-- Controls Bottom -->
   <div class="game-controls">
     <div class="controls-left">
-      <button class="btn btn-icon undo-btn" id="undo-btn"
-              onclick="App.undo()" title="Undo last move (1 use)" aria-label="Undo Move">
-        <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
-      </button>
-      
       <!-- Multiplayer Reaction Button -->
       <div id="reaction-container" class="reaction-container" style="display:none;">
         <button class="btn btn-icon" id="react-btn" onclick="Multiplayer.toggleReactionTray()" title="Send Reaction" aria-label="Send Reaction">
@@ -542,10 +502,6 @@
       5-in-a-row → <strong style="color:var(--color-x);">30 pts</strong><br>
       6-in-a-row → <strong style="color:var(--color-x);">40 pts</strong><br>
       Each extra cell adds 10 more pts.
-    </div>
-    <div>
-      <strong style="color:var(--fg-primary);">Undo</strong><br>
-      One undo per game. Use it wisely!
     </div>
     <div>
       <strong style="color:var(--fg-primary);">Zoom</strong><br>
