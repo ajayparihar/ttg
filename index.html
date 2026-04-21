@@ -78,6 +78,12 @@
   </div>
 </div>
 
+<div class="bg-particles" id="bg-particles" aria-hidden="true">
+  <div class="particle p1"></div>
+  <div class="particle p2"></div>
+  <div class="particle p3"></div>
+</div>
+
 <!-- ============================================================
      SCREEN: LOGIN / WELCOME
      ============================================================ -->
@@ -150,8 +156,11 @@
     <div class="lobby-card">
       <h3>Host a Ring</h3>
       <p>Create a Ring and share the ID.</p>
+      <button class="btn btn-icon back-lobby-btn" onclick="Multiplayer.leaveRoom()" aria-label="Leave multiplayer room">
+        <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      </button>
       <button class="btn btn-primary" onclick="Multiplayer.createRoom()">
-        <i class="fa-solid fa-plus" aria-hidden="true"></i> Create Private Room
+        <i class="fa-solid fa-plus" aria-hidden="true"></i> Create Private Ring
       </button>
     </div>
 
@@ -290,6 +299,7 @@
     </div>
 
     <div class="hud-center">
+      <div id="mode-badge" class="mode-badge">Classic</div>
       <div class="scores-bar">
         <div class="score-block x-score" id="score-x-block">
           <span id="score-x-name">Xi</span>
@@ -308,6 +318,9 @@
     <div class="hud-right">
       <div style="text-align:right;">
         <div class="grid-size-badge" id="grid-size-badge">3×3</div>
+        <div class="mode-info">
+          <span class="mode-badge" id="mode-badge">Dual</span>
+        </div>
       </div>
     </div>
   </div>
