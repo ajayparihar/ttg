@@ -453,6 +453,7 @@ export const Multiplayer = {
     Render.updateScore('O');
 
     // ── Push game state and set status to 'playing' ──────────────────
+    // Important: we must push to the 'gameState' property as the listeners expect.
     await roomRef.update({
       status:    'playing',
       gameState: this._getSerializableState()
@@ -1121,7 +1122,7 @@ export const Multiplayer = {
     // Reset rematch request state
     State.rematchRequests = { X: false, O: false };
 
-    // Clear rematch request from Firebase
+    // Clear rematch request from Firebase to stop the listener
     const roomRef = db.ref(`rings/${State.roomCode}`);
     roomRef.child('rematchRequest').remove();
 
