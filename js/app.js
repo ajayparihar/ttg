@@ -179,10 +179,11 @@ export const App = {
    *  - Player O → `"AI"` (single-player) or `"Om"` (dual).
    */
   startGame() {
-    const nameX = document.getElementById('name-x').value.trim() || 'Xi';
+    const sanitize = (str) => str.replace(/[<>&"']/g, '');
+    const nameX = sanitize(document.getElementById('name-x').value.trim()) || 'Xi';
     const nameO = this.selectedMode === 'single'
       ? 'AI'
-      : (document.getElementById('name-o').value.trim() || 'Om');
+      : (sanitize(document.getElementById('name-o').value.trim()) || 'Om');
 
     State.mode     = this.selectedMode;
     State.duration = this.selectedDuration;
@@ -284,7 +285,8 @@ export const App = {
 
     // Cancel any pending AI move
     clearTimeout(State.aiTimeout);
-    document.getElementById('ai-thinking').style.display = 'none';
+    const aiThinking = document.getElementById('ai-thinking');
+    if (aiThinking) aiThinking.style.display = 'none';
 
     // Restore the pre-move snapshot
     const snap          = State.undoSnapshot;
@@ -458,7 +460,7 @@ export const App = {
       const elPlayed = document.getElementById('stat-games-played');
       const elScore = document.getElementById('stat-highest-score');
       const elGrid = document.getElementById('stat-largest-grid');
-      
+
       const played = saved.gamesPlayed || 0;
       const hscore = saved.highestScore || 0;
 
@@ -466,7 +468,9 @@ export const App = {
       if (elScore) elScore.textContent = hscore;
       if (elGrid) elGrid.textContent = saved.largestGrid ? `${saved.largestGrid}×${saved.largestGrid}` : 'N/A';
 
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Stats UI update failed:', err);
+    }
   },
 
   /** Slides the settings panel out. */
@@ -602,7 +606,9 @@ export const App = {
     // Save to localStorage
     try {
       localStorage.setItem('ttg_emojis', JSON.stringify(State.activeEmojis));
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Failed to save emojis:', err);
+    }
 
     this.updateEmojiUI();
     this.showToast("Emoji Equipped!");
@@ -673,7 +679,9 @@ export const App = {
     try {
       localStorage.setItem('ttg_gamemode', mode);
       this.showToast(`Default mode: ${mode === 'single' ? 'Single Player' : 'Dual Player'}`);
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Failed to save game mode:', err);
+    }
   },
 
   /**
@@ -692,7 +700,9 @@ export const App = {
       btn.classList.toggle('active', btn.dataset.theme === name);
     });
 
-    try { localStorage.setItem('ttg_theme', name); } catch (_) {}
+    try { localStorage.setItem('ttg_theme', name); } catch (err) {
+      console.warn('Failed to save theme:', err);
+    }
     this.showToast(`Theme: ${name.charAt(0).toUpperCase() + name.slice(1)}`);
   },
 
@@ -710,7 +720,9 @@ export const App = {
     State.soundEnabled = !State.soundEnabled;
     this._updateSoundButton();
 
-    try { localStorage.setItem('ttg_sound', State.soundEnabled ? 'on' : 'off'); } catch (_) {}
+    try { localStorage.setItem('ttg_sound', State.soundEnabled ? 'on' : 'off'); } catch (err) {
+      console.warn('Failed to save sound setting:', err);
+    }
     this.showToast(State.soundEnabled ? 'Sound On' : 'Sound Muted');
   },
 
@@ -753,12 +765,28 @@ export const App = {
     toast.className   = 'toast';
     toast.textContent = msg;
     container.appendChild(toast);
-    
+
+    // Also announce to screen readers
+    this.announceToScreenReader(msg);
+
     // Smooth fade out
     setTimeout(() => {
       toast.style.opacity = '0';
       setTimeout(() => toast.remove(), 500);
     }, dur);
+  },
+
+  /**
+   * Announces a message to screen readers via the aria-live region.
+   * @param {string} msg - Message to announce.
+   */
+  announceToScreenReader(msg) {
+    const srEl = document.getElementById('sr-announce');
+    if (srEl) {
+      srEl.textContent = msg;
+      // Clear after announcement to avoid repetition
+      setTimeout(() => { srEl.textContent = ''; }, 1000);
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -920,14 +948,18 @@ export const App = {
           this.setTheme('dag-dark');
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Failed to load theme:', err);
+    }
 
     try {
       const savedMode = localStorage.getItem('ttg_gamemode');
       if (savedMode) {
         this.setGameMode(savedMode);
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Failed to load game mode:', err);
+    }
 
     // First visit tutorial check
     try {
@@ -935,7 +967,9 @@ export const App = {
       if (!tutorialDone) {
         // Quietly wait for user to find it themselves or use a subtle hint later
       }
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Failed to load tutorial state:', err);
+    }
 
     try {
       const sound = localStorage.getItem('ttg_sound');
@@ -943,7 +977,9 @@ export const App = {
         State.soundEnabled = false;
       }
       this._updateSoundButton();
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Failed to load sound setting:', err);
+    }
 
     try {
       const savedEmojis = localStorage.getItem('ttg_emojis');
@@ -951,15 +987,106 @@ export const App = {
         State.activeEmojis = JSON.parse(savedEmojis);
       }
       this.updateReactionTray();
-    } catch (_) {}
-
-    // Init lobby clear button listener
-    const joinInput = document.getElementById('join-code-input');
-    const clearBtn = document.getElementById('clear-join-input');
-    if (joinInput && clearBtn) {
-      joinInput.addEventListener('input', () => {
-        clearBtn.style.display = joinInput.value ? 'block' : 'none';
-      });
+    } catch (err) {
+      console.warn('Failed to load emojis:', err);
     }
+
+    // Init OTP input behavior for Ring ID
+    App.initOtpInputs();
+  },
+
+  /**
+   * Initialize OTP-style input behavior for the Ring ID input
+   * - Auto-advance to next input on character entry
+   * - Backspace moves to previous input when empty
+   * - Paste support to fill all 4 boxes
+   * - Only allows alphanumeric characters
+   */
+  initOtpInputs() {
+    const container = document.getElementById('otp-container');
+    if (!container) return;
+
+    const inputs = container.querySelectorAll('.otp-input');
+
+    inputs.forEach((input, index) => {
+      // Handle character input
+      input.addEventListener('input', (e) => {
+        const value = e.target.value;
+
+        // Only allow alphanumeric, auto-convert to uppercase
+        if (!/^[a-zA-Z0-9]$/.test(value)) {
+          e.target.value = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 1).toUpperCase();
+          return;
+        }
+
+        e.target.value = value.toUpperCase();
+        e.target.classList.add('filled');
+
+        // Auto-advance to next input
+        if (e.target.value && index < inputs.length - 1) {
+          inputs[index + 1].focus();
+        }
+
+        // Auto-join when all 4 digits filled (optional - can be enabled)
+        // const allFilled = Array.from(inputs).every(i => i.value);
+        // if (allFilled) Multiplayer.joinRoom();
+      });
+
+      // Handle keyboard navigation
+      input.addEventListener('keydown', (e) => {
+        // Backspace on empty input moves focus to previous
+        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+          e.preventDefault();
+          inputs[index - 1].focus();
+          inputs[index - 1].value = '';
+          inputs[index - 1].classList.remove('filled');
+        }
+
+        // Left arrow moves to previous input
+        if (e.key === 'ArrowLeft' && index > 0) {
+          e.preventDefault();
+          inputs[index - 1].focus();
+        }
+
+        // Right arrow moves to next input
+        if (e.key === 'ArrowRight' && index < inputs.length - 1) {
+          e.preventDefault();
+          inputs[index + 1].focus();
+        }
+
+        // Enter triggers join
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          Multiplayer.joinRoom();
+        }
+      });
+
+      // Handle paste event
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+        const cleaned = pasteData.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4);
+
+        // Fill inputs with pasted characters
+        cleaned.split('').forEach((char, i) => {
+          if (inputs[i]) {
+            inputs[i].value = char;
+            inputs[i].classList.add('filled');
+          }
+        });
+
+        // Focus the appropriate input
+        if (cleaned.length < 4 && inputs[cleaned.length]) {
+          inputs[cleaned.length].focus();
+        } else if (cleaned.length === 4) {
+          inputs[3].focus();
+        }
+      });
+
+      // Focus handling - select all text when focused for easy replacement
+      input.addEventListener('focus', () => {
+        input.select();
+      });
+    });
   },
 };

@@ -266,6 +266,10 @@ export const Multiplayer = {
     });
 
     // ── Update the waiting-room UI ───────────────────────────────────
+    // Ensure room info is visible for host
+    const roomInfoEl = document.querySelector('.room-info');
+    if (roomInfoEl) roomInfoEl.style.display = '';
+
     document.getElementById('room-code-text').textContent    = code;
     document.getElementById('slot-host-name').textContent    = State.names.X || 'You';
     document.getElementById('slot-guest-name').textContent   = 'Waiting...';
@@ -325,7 +329,8 @@ export const Multiplayer = {
    *  7. Attach a `value` listener to detect when the host starts the game.
    */
   async joinRoom() {
-    const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+    const inputs = document.querySelectorAll('.otp-input');
+    const code = Array.from(inputs).map(input => input.value.trim().toUpperCase()).join('');
 
     // ── Input validation ─────────────────────────────────────────────
     if (!code || code.length !== 4) {
@@ -346,8 +351,15 @@ export const Multiplayer = {
     const data = snapshot.val();
 
     // ── Room availability check ──────────────────────────────────────
-    if (data.status !== 'waiting') {
-      App.showToast("Room is full or already started.");
+    // Room must be in 'waiting' status AND have no guest assigned yet
+    if (data.status !== 'waiting' || data.guestId) {
+      if (data.status === 'abandoned') {
+        App.showToast("Room was abandoned by host.");
+      } else if (data.guestId) {
+        App.showToast("Room is full (guest already joined).");
+      } else {
+        App.showToast("Room is full or already started.");
+      }
       return;
     }
 
@@ -370,7 +382,10 @@ export const Multiplayer = {
     });
 
     // ── Update the waiting-room UI ───────────────────────────────────
-    document.getElementById('room-code-text').textContent         = code;
+    // Hide Ring ID for guests (they already know it - they just typed it)
+    const roomInfoEl = document.querySelector('.room-info');
+    if (roomInfoEl) roomInfoEl.style.display = 'none';
+
     document.getElementById('slot-host-name').textContent         = data.hostName;
     document.getElementById('slot-guest-name').textContent        = State.names.O || 'You';
     document.getElementById('slot-guest').classList.add('active');
@@ -475,6 +490,11 @@ export const Multiplayer = {
    */
   _startSyncListeners() {
     const roomRef = db.ref(`rings/${State.roomCode}`);
+
+    // Detach any existing listeners first to prevent duplicates on rematch
+    roomRef.child('status').off();
+    roomRef.child('gameState').off();
+    roomRef.child('reaction').off();
 
     // Listen for opponent disconnection
     roomRef.child('status').on('value', (snapshot) => {

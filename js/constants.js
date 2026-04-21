@@ -26,13 +26,6 @@
 export const MAX_CHAIN_SCORE = 50;
 
 /**
- * Milliseconds the AI "thinks" before placing its mark.
- * A non-zero delay prevents the move from feeling instantaneous and gives
- * the human player a moment to register what just happened.
- */
-export const AI_DELAY_MS = 500;
-
-/**
  * Default AI difficulty level on a 1–10 scale.
  *   - 1 = mostly random moves.
  *   - 6 = balanced (default).

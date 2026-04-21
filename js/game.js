@@ -570,7 +570,9 @@ function _persistStats() {
     Multiplayer.pushStat('gamesPlayed', stats.gamesPlayed);
     Multiplayer.pushStat('highestScore', stats.highestScore);
     Multiplayer.pushStat('largestGrid', stats.largestGrid);
-  } catch (err) {}
+  } catch (err) {
+    console.warn('Failed to persist stats:', err);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -1476,6 +1476,18 @@ body {
 .theme-btn[data-theme="dag-light-blue"] i { color: #8aa8ff; }
 .theme-btn[data-theme="dag-contrast-light"] i { color: #ff6b6b; }
 
+/* Fix: Increase touch target size for zoom buttons (was too small on some themes) */
+.zoom-btn {
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* Fix: Ensure proper focus visibility for keyboard navigation */
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* Toggle button for settings (sound, etc.) */
 .btn-toggle {
   width: 100%;
@@ -1746,6 +1758,18 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 2px; }
 
+/* Accessibility: Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .confetti-piece { display: none; }
+  .floating-score { display: none; }
+}
+
 /* ============================================================
    PAUSE MODAL
    ============================================================ */
@@ -1883,6 +1907,58 @@ body {
 
 .room-code-input:focus {
   border-color: var(--color-x);
+}
+
+/* OTP-style input for Ring ID */
+.otp-input-container {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  justify-content: center;
+}
+
+.otp-input {
+  width: 48px;
+  height: 56px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--card-border);
+  border-radius: 12px;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--fg-primary);
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: var(--font-display);
+}
+
+.otp-input:focus {
+  border-color: var(--color-x);
+  background: var(--glass-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.otp-input.filled {
+  border-color: var(--fg-secondary);
+  background: var(--glass);
+}
+
+.otp-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 380px) {
+  .otp-input {
+    width: 40px;
+    height: 48px;
+    font-size: 20px;
+  }
+  .otp-input-container {
+    gap: 6px;
+  }
 }
 
 .waiting-container {

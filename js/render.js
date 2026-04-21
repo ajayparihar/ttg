@@ -297,7 +297,10 @@ export const Render = {
 
     this.updateGridBorder();
 
+    let turnText = '';
+
     if (State.isThinking) {
+      turnText = `${i18n.t('ai_thinking')}...`;
       ti.innerHTML = `${i18n.t('ai_thinking')} <span class="thinking-dots"><span>.</span><span>.</span><span>.</span></span>`;
     } else if (State.isMultiplayer) {
       const isOurTurn = State.currentPlayer === State.playerRole;
@@ -308,12 +311,24 @@ export const Render = {
       if (isOurTurn) State.isProcessing = false;
 
       ti.classList.remove('hidden');
-      ti.textContent = isOurTurn ? i18n.t('your_turn') : i18n.t('opponent_turn');
+      turnText = isOurTurn ? i18n.t('your_turn') : i18n.t('opponent_turn');
+      ti.textContent = turnText;
     } else {
       ti.classList.remove('hidden');
-      ti.textContent = (State.currentPlayer === 'O' && State.mode === 'single') 
+      turnText = (State.currentPlayer === 'O' && State.mode === 'single')
         ? i18n.t('ai_turn')
         : `${name} ${i18n.t('your_turn')}`;
+      ti.textContent = turnText;
+    }
+
+    // Announce turn change to screen readers (but not on initial load)
+    if (turnText && State.gameActive && window.App?.announceToScreenReader) {
+      // Only announce if it's a meaningful change (not initial render)
+      const currentText = ti.getAttribute('data-last-turn');
+      if (currentText !== turnText) {
+        App.announceToScreenReader(turnText);
+        ti.setAttribute('data-last-turn', turnText);
+      }
     }
 
     // Swap ghost previews on all empty cells to the new current player's mark

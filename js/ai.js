@@ -173,8 +173,8 @@ export const AI = {
    * @param {number}     c        - Column of the trial mark.
    * @param {string}     player   - The AI's mark.
    * @param {string}     opponent - The human's mark.
-   * @param {number}     skill    - Current difficulty level (unused here
-   *   but available for future skill-sensitive tuning).
+   * @param {number}     skill    - Current difficulty level (available for
+   *   future skill-sensitive heuristic tuning).
    * @returns {number} A heuristic score (higher is better for the AI).
    */
   _evaluateBoard(grid, r, c, player, opponent, skill) {

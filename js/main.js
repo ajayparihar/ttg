@@ -40,12 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---- 1. Handle splash screen dismissal ---- */
   const splash = document.getElementById('splash-screen');
   if (splash) {
+    // Update aria progress during load
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+      progress = Math.min(progress + 5, 90);
+      splash.setAttribute('aria-valuenow', progress.toString());
+    }, 100);
+
     // Wait for at least 2.5 seconds (animation duration)
     // Also wait for the font to be ready for the best look
     const splashTimeout = new Promise(resolve => setTimeout(resolve, 2500));
     const fontReady = document.fonts ? document.fonts.ready : Promise.resolve();
 
     Promise.all([splashTimeout, fontReady]).then(() => {
+      clearInterval(progressInterval);
+      splash.setAttribute('aria-valuenow', '100');
       splash.classList.add('fade-out');
       // Remove from DOM after fade animation to keep it clean
       setTimeout(() => splash.remove(), 800);
@@ -70,9 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---- 5. Handle deep-link multiplayer invites (?room=XXXX) ---- */
   const urlParams = new URLSearchParams(window.location.search);
   const roomCode = urlParams.get('room');
-  if (roomCode) {
-    // Pre-fill the join input and immediately attempt to join the room
-    document.getElementById('join-code-input').value = roomCode;
+  if (roomCode && roomCode.length === 4) {
+    // Pre-fill the OTP inputs and immediately attempt to join the room
+    const otpInputs = document.querySelectorAll('.otp-input');
+    otpInputs.forEach((input, index) => {
+      input.value = roomCode[index] || '';
+    });
     Multiplayer.joinRoom();
   }
 
@@ -188,6 +200,8 @@ function handleGridNavigation(e) {
       // Only place if cell is empty and it's player's turn
       if (isValidMove(focusedCell.r, focusedCell.c)) {
         makeMove(focusedCell.r, focusedCell.c);
+      } else {
+        hapticFeedback(HapticPresets.ERROR); // Feedback for invalid move
       }
       return;
   }
