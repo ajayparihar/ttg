@@ -1810,6 +1810,107 @@ body {
 .hidden { display: none !important; }
 
 /* ============================================================
+   REMATCH MODAL (Themed)
+   ============================================================ */
+.rematch-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-xl);
+  padding: 32px 28px;
+  z-index: 201;
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 300px;
+  max-width: 90vw;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(16px);
+  animation: rematchModalIn 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.rematch-modal.visible {
+  display: flex;
+}
+
+@keyframes rematchModalIn {
+  from { opacity: 0; transform: translate(-50%, -45%) scale(0.9); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.rematch-icon {
+  font-size: 48px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.rematch-icon i {
+  animation: rematchSpin 2s linear infinite;
+}
+
+@keyframes rematchSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rematch-title {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--fg-primary);
+}
+
+.rematch-subtitle {
+  font-size: 14px;
+  color: var(--fg-secondary);
+  line-height: 1.5;
+}
+
+.rematch-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.rematch-actions .btn {
+  flex: 1;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.rematch-actions .btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg-primary);
+}
+
+.rematch-actions .btn-primary:hover {
+  background: var(--accent);
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.rematch-status {
+  font-size: 12px;
+  color: var(--fg-muted);
+  margin-top: 4px;
+  min-height: 16px;
+}
+
+/* Waiting state styles */
+.rematch-modal.waiting .rematch-icon i {
+  animation: rematchPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes rematchPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+/* ============================================================
    MULTIPLAYER UI
    ============================================================ */
 .lobby-options {

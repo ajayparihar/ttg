@@ -426,6 +426,27 @@
 </div>
 
 <!-- ============================================================
+     REMATCH REQUEST POPUP (Themed)
+     ============================================================ -->
+<div class="settings-overlay" id="rematch-overlay" style="z-index:200;display:none;"></div>
+<div id="rematch-modal" class="rematch-modal" style="display:none;">
+  <div class="rematch-icon">
+    <i class="fa-solid fa-rotate" id="rematch-icon-anim"></i>
+  </div>
+  <div class="rematch-title" id="rematch-title">Rematch Request</div>
+  <div class="rematch-subtitle" id="rematch-subtitle">Your opponent wants a rematch!</div>
+  <div class="rematch-actions">
+    <button class="btn btn-primary" id="rematch-accept-btn" onclick="Multiplayer.acceptRematch()">
+      <i class="fa-solid fa-check"></i> Accept
+    </button>
+    <button class="btn" id="rematch-decline-btn" onclick="Multiplayer.declineRematch()">
+      <i class="fa-solid fa-xmark"></i> Decline
+    </button>
+  </div>
+  <div class="rematch-status" id="rematch-status"></div>
+</div>
+
+<!-- ============================================================
      SETTINGS PANEL
      ============================================================ -->
 <div class="settings-overlay" id="settings-overlay" onclick="App.closeSettings()"></div>

@@ -395,19 +395,97 @@ export const App = {
   /**
    * Starts a new game with the same settings (from the game-over screen).
    *
-   * In multiplayer, only the host can trigger a rematch; the guest
-   * sees a "Waiting for host…" toast.
+   * In multiplayer, sends a rematch request to the opponent.
+   * Both players must approve before the game starts.
    */
   rematch() {
     if (State.isMultiplayer) {
-      if (State.playerRole === 'X') {
-        Multiplayer.hostStartGame();
-      } else {
-        App.showToast("Waiting for host to rematch...");
-      }
+      // Send rematch request to opponent
+      Multiplayer.requestRematch();
     } else {
       this.initGame();
     }
+  },
+
+  /**
+   * Shows the rematch request popup with themed styling.
+   * Called when the opponent requests a rematch.
+   * @param {string} opponentName - Name of the opponent requesting rematch.
+   */
+  showRematchPopup(opponentName) {
+    if (State.rematchPopupOpen) return;
+    State.rematchPopupOpen = true;
+
+    const overlay = document.getElementById('rematch-overlay');
+    const modal = document.getElementById('rematch-modal');
+    const title = document.getElementById('rematch-title');
+    const subtitle = document.getElementById('rematch-subtitle');
+    const status = document.getElementById('rematch-status');
+
+    title.textContent = 'Rematch Request';
+    subtitle.textContent = `${opponentName} wants a rematch!`;
+    status.textContent = '';
+    modal.classList.remove('waiting');
+
+    overlay.style.display = 'block';
+    modal.style.display = 'flex';
+  },
+
+  /**
+   * Shows the waiting for opponent popup after requesting a rematch.
+   */
+  showRematchWaiting() {
+    if (State.rematchPopupOpen) return;
+    State.rematchPopupOpen = true;
+
+    const overlay = document.getElementById('rematch-overlay');
+    const modal = document.getElementById('rematch-modal');
+    const title = document.getElementById('rematch-title');
+    const subtitle = document.getElementById('rematch-subtitle');
+    const acceptBtn = document.getElementById('rematch-accept-btn');
+    const declineBtn = document.getElementById('rematch-decline-btn');
+    const status = document.getElementById('rematch-status');
+
+    title.textContent = 'Rematch Requested';
+    subtitle.textContent = 'Waiting for opponent to accept...';
+    status.textContent = '';
+    modal.classList.add('waiting');
+
+    // Hide buttons in waiting state
+    acceptBtn.style.display = 'none';
+    declineBtn.style.display = 'none';
+
+    overlay.style.display = 'block';
+    modal.style.display = 'flex';
+  },
+
+  /**
+   * Hides the rematch popup and resets its state.
+   */
+  hideRematchPopup() {
+    State.rematchPopupOpen = false;
+
+    const overlay = document.getElementById('rematch-overlay');
+    const modal = document.getElementById('rematch-modal');
+    const acceptBtn = document.getElementById('rematch-accept-btn');
+    const declineBtn = document.getElementById('rematch-decline-btn');
+
+    overlay.style.display = 'none';
+    modal.style.display = 'none';
+    modal.classList.remove('waiting');
+
+    // Restore buttons for next time
+    acceptBtn.style.display = '';
+    declineBtn.style.display = '';
+  },
+
+  /**
+   * Updates the rematch popup status text.
+   * @param {string} message - Status message to display.
+   */
+  updateRematchStatus(message) {
+    const status = document.getElementById('rematch-status');
+    status.textContent = message;
   },
 
   /**

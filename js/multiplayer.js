@@ -495,6 +495,7 @@ export const Multiplayer = {
     roomRef.child('status').off();
     roomRef.child('gameState').off();
     roomRef.child('reaction').off();
+    roomRef.child('rematchRequest').off();
 
     // Listen for opponent disconnection
     roomRef.child('status').on('value', (snapshot) => {
@@ -524,6 +525,14 @@ export const Multiplayer = {
         // Haptic feedback when receiving a reaction from opponent
         hapticFeedback(HapticPresets.TAP);
       }
+    });
+
+    // Listen for rematch requests
+    roomRef.child('rematchRequest').on('value', (snap) => {
+      const data = snap.val();
+      if (!data) return;
+
+      this._handleRematchRequest(data);
     });
   },
 
@@ -720,6 +729,7 @@ export const Multiplayer = {
       roomRef.child('status').off();
       roomRef.child('gameState').off();
       roomRef.child('reaction').off();
+      roomRef.child('rematchRequest').off();
       roomRef.off();
 
       if (!forced) {
@@ -735,7 +745,11 @@ export const Multiplayer = {
     State.isMultiplayer = false;
     State.roomCode      = null;
     State.gameActive    = false;
+    State.rematchRequests = { X: false, O: false };
     clearTimers();
+
+    // Hide any open popups
+    App.hideRematchPopup();
 
     if (App.currentScreen !== 'menu') {
       App.showScreen('menu');
@@ -893,5 +907,160 @@ export const Multiplayer = {
 
     document.body.appendChild(bubble);
     setTimeout(() => bubble.remove(), 2500);
+  },
+
+  // ─────────────────────────────────────────────────────────────────────
+  //  Rematch request handling
+  // ─────────────────────────────────────────────────────────────────────
+
+  /**
+   * Sends a rematch request to the opponent.
+   * Called when the local player clicks the rematch button.
+   */
+  requestRematch() {
+    if (!State.isMultiplayer || !State.roomCode) return;
+
+    const roomRef = db.ref(`rings/${State.roomCode}`);
+    const myRole = State.playerRole;
+    const opponentRole = myRole === 'X' ? 'O' : 'X';
+
+    // Mark my approval
+    State.rematchRequests[myRole] = true;
+
+    // Send request to Firebase
+    roomRef.child('rematchRequest').update({
+      [myRole]: true,
+      [`${myRole}Name`]: State.names[myRole],
+      timestamp: firebase.database.ServerValue.TIMESTAMP,
+      salt: Math.random() // Ensure trigger on duplicate requests
+    });
+
+    // Check if both approved (local + remote already true)
+    if (State.rematchRequests[opponentRole]) {
+      this._startRematchGame();
+    } else {
+      // Show waiting popup
+      App.showRematchWaiting();
+      App.showToast('Rematch requested! Waiting for opponent...');
+    }
+  },
+
+  /**
+   * Accepts an incoming rematch request.
+   * Called when user clicks "Accept" on the rematch popup.
+   */
+  acceptRematch() {
+    if (!State.isMultiplayer || !State.roomCode) return;
+
+    const roomRef = db.ref(`rings/${State.roomCode}`);
+    const myRole = State.playerRole;
+    const opponentRole = myRole === 'X' ? 'O' : 'X';
+
+    // Mark my approval
+    State.rematchRequests[myRole] = true;
+
+    // Update Firebase
+    roomRef.child('rematchRequest').update({
+      [myRole]: true,
+      timestamp: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    // Check if both approved
+    if (State.rematchRequests[opponentRole]) {
+      this._startRematchGame();
+    } else {
+      // Still waiting for opponent - show waiting state
+      App.updateRematchStatus('Waiting for opponent to confirm...');
+      App.showToast('You accepted! Waiting for opponent...');
+    }
+
+    hapticFeedback(HapticPresets.BUTTON);
+  },
+
+  /**
+   * Declines an incoming rematch request.
+   * Called when user clicks "Decline" on the rematch popup.
+   */
+  declineRematch() {
+    if (!State.isMultiplayer || !State.roomCode) return;
+
+    const roomRef = db.ref(`rings/${State.roomCode}`);
+
+    // Clear the rematch request
+    roomRef.child('rematchRequest').remove();
+
+    // Reset local state
+    State.rematchRequests = { X: false, O: false };
+
+    // Hide popup
+    App.hideRematchPopup();
+
+    App.showToast('Rematch declined.');
+    hapticFeedback(HapticPresets.BUTTON);
+  },
+
+  /**
+   * Handles incoming rematch request data from Firebase.
+   * @param {object} data - Rematch request data from Firebase.
+   * @private
+   */
+  _handleRematchRequest(data) {
+    if (!data || !State.isMultiplayer) return;
+
+    const myRole = State.playerRole;
+    const opponentRole = myRole === 'X' ? 'O' : 'X';
+
+    // Update local state from Firebase
+    if (data.X !== undefined) State.rematchRequests.X = data.X;
+    if (data.O !== undefined) State.rematchRequests.O = data.O;
+
+    const opponentRequested = State.rematchRequests[opponentRole];
+    const iRequested = State.rematchRequests[myRole];
+
+    // Both approved - start the game
+    if (State.rematchRequests.X && State.rematchRequests.O) {
+      this._startRematchGame();
+      return;
+    }
+
+    // Opponent requested, I haven't responded yet
+    if (opponentRequested && !iRequested && !State.rematchPopupOpen) {
+      const opponentName = data[`${opponentRole}Name`] || State.names[opponentRole] || 'Opponent';
+      App.showRematchPopup(opponentName);
+      hapticFeedback(HapticPresets.BUTTON);
+    }
+
+    // I requested, opponent accepted (waiting for me to confirm)
+    if (iRequested && opponentRequested && State.rematchPopupOpen) {
+      App.updateRematchStatus('Opponent accepted! Starting game...');
+    }
+  },
+
+  /**
+   * Starts a rematch game after both players have approved.
+   * Resets the rematch request state and initiates the game.
+   * @private
+   */
+  _startRematchGame() {
+    // Hide popup if open
+    App.hideRematchPopup();
+
+    // Reset rematch request state
+    State.rematchRequests = { X: false, O: false };
+
+    // Clear rematch request from Firebase
+    const roomRef = db.ref(`rings/${State.roomCode}`);
+    roomRef.child('rematchRequest').remove();
+
+    // Show toast
+    App.showToast('Both players ready! Starting rematch...');
+
+    // Start the game (host handles the actual game start)
+    if (State.playerRole === 'X') {
+      this.hostStartGame();
+    }
+    // Guest will be notified via the existing room status listener
+
+    hapticFeedback(HapticPresets.BUTTON);
   }
 };

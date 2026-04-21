@@ -290,4 +290,21 @@ export const State = {
    * Disables online play features.
    */
   loginSkipped: false,
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  11. REMATCH REQUEST STATE
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Current rematch request status for multiplayer.
+   * Tracks which players have requested/approved a rematch.
+   * @type {{ X: boolean, O: boolean }}
+   */
+  rematchRequests: { X: false, O: false },
+
+  /**
+   * Whether a rematch request popup is currently being shown.
+   * Prevents duplicate popups.
+   */
+  rematchPopupOpen: false,
 };
