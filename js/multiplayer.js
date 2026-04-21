@@ -683,7 +683,15 @@ export const Multiplayer = {
     if (!data) return;
 
     const oldSize = State.gridSize;
-    const newSize = data.gridSize || State.gridSize;
+    
+    // Defensively determine the new size. Some partial updates might miss the gridSize key
+    // but include the expanded grid array.
+    let newSize = data.gridSize || oldSize;
+    if (data.grid) {
+      const gridKeys = Object.keys(data.grid);
+      const maxIdx = gridKeys.reduce((max, key) => Math.max(max, parseInt(key, 10)), -1);
+      if (maxIdx + 1 > newSize) newSize = maxIdx + 1;
+    }
 
     // ── Defensively update the local grid ───────────────────────────
     // We only perform a full reconstruction if the grid doesn't exist

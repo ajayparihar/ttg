@@ -370,8 +370,14 @@ export function expandGrid() {
     Render.buildGrid(State.gridSize, oldSize);
     State.isProcessing = false;
     
-    // switchTurn will handle the final push of everything in the expanded state
-    switchTurn(true);
+    // Switch turn locally without pushing immediately
+    switchTurn(false);
+
+    // Push the COMPLETE state (including new grid, gridSize, and turn)
+    // to ensure the opponent stays in perfect sync after the expansion.
+    if (State.isMultiplayer) {
+      Multiplayer.pushState();
+    }
   }, GRID_EXPAND_DELAY_MS);
 }
 
