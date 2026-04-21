@@ -627,19 +627,20 @@ export const Multiplayer = {
    * @private
    */
   _getSerializableState() {
+    // Firebase doesn't support Sets, so we convert scoredChains to an Array
     return {
       grid:           State.grid,
       gridSize:       State.gridSize,
       currentPlayer:  State.currentPlayer,
-      duration:       State.duration,
+      duration:       State.duration || 0,
       scores:         State.scores,
       names:          State.names,
       scoredChains:   Array.from(State.scoredChains),   // Set → Array
-      scoredLines:    State.scoredLines,
+      scoredLines:    State.scoredLines || [],
       gameActive:     State.gameActive,
       winner:         State.winner || null,
-      lastMove:       State.lastMove,                   // Sync move indicator
-      lastModifiedBy: State.userId,                     // Echo-guard
+      lastMove:       State.lastMove || null,
+      lastModifiedBy: State.userId,
       timestamp:      firebase.database.ServerValue.TIMESTAMP
     };
   },
@@ -667,118 +668,89 @@ export const Multiplayer = {
     if (!data) return;
 
     // ── Order Protection (Timestamp Guard) ───────────────────────────
-    // If we receive an update that is older than our last processed sync, 
-    // we discard it. This handles high-latency "out of order" delivery.
     if (data.timestamp && State.lastSyncTimestamp && data.timestamp <= State.lastSyncTimestamp) {
       return;
     }
     
     // ── Echo Guard ───────────────────────────────────────────────────
-    // Only sync if the change was made by the other player
     if (data.lastModifiedBy === State.userId) {
       return;
     }
 
+    // ── Processing Guard ─────────────────────────────────────────────
+    if (State.isProcessing) {
+      setTimeout(() => this._syncFromRemote(data), 100);
+      return;
+    }
+
     State.lastSyncTimestamp = data.timestamp;
-    const oldSize = State.gridSize;
+    const oldSize = State.gridSize || 0;
     
-    // Defensively determine the new size.
     let newSize = data.gridSize || oldSize;
-    if (data.grid) {
+    if (data.grid && typeof data.grid === 'object') {
       const gridKeys = Object.keys(data.grid);
       const maxIdx = gridKeys.reduce((max, key) => Math.max(max, parseInt(key, 10)), -1);
       if (maxIdx + 1 > newSize) newSize = maxIdx + 1;
     }
 
-    // ── Defensively update the local grid ───────────────────────────
-    if (!State.grid || State.grid.length !== newSize) {
-      const safeGrid = Array(newSize).fill(null).map(() => Array(newSize).fill(''));
-      if (data.grid) {
-        for (let r = 0; r < newSize; r++) {
-          if (data.grid[r]) {
-            for (let c = 0; c < newSize; c++) {
-              if (data.grid[r][c]) safeGrid[r][c] = data.grid[r][c];
-            }
-          }
-        }
-      }
-      State.grid = safeGrid;
-    } else if (data.grid) {
-      // Incremental sync
-      Object.keys(data.grid).forEach(rStr => {
-        const r = parseInt(rStr, 10);
-        if (!isNaN(r) && data.grid[rStr]) {
-          Object.keys(data.grid[rStr]).forEach(cStr => {
-            const c = parseInt(cStr, 10);
-            if (!isNaN(c)) {
-              State.grid[r][c] = data.grid[rStr][cStr];
-            }
-          });
-        }
-      });
-    }
-
-    // ── Apply remote values to local State ───────────────────────────
+    // ── Atomic State Update ──────────────────────────────────────────
     State.gridSize      = newSize;
     State.currentPlayer = data.currentPlayer;
     State.duration      = data.duration || 0;
-    State.scores        = data.scores || State.scores;
+    State.scores        = data.scores || { X: 0, O: 0 };
     State.names         = data.names || State.names;
     State.lastMove      = data.lastMove || null;
-
-    // Validate scoredChains is an array
-    const chainsArray = Array.isArray(data.scoredChains) ? data.scoredChains : [];
-    State.scoredChains  = new Set(chainsArray);
-    State.scoredLines   = data.scoredLines || [];
     State.gameActive    = data.gameActive !== undefined ? data.gameActive : true;
     State.winner        = data.winner || null;
 
-    // Initialise timeLeft if it hasn't been set yet
-    if (State.timeLeft === 0 && State.duration > 0) {
-      State.timeLeft = State.duration;
+    const chainsArray = Array.isArray(data.scoredChains) ? data.scoredChains : [];
+    State.scoredChains  = new Set(chainsArray);
+    State.scoredLines   = data.scoredLines || [];
+
+    if (data.grid) {
+      if (!State.grid || State.grid.length !== newSize) {
+        State.grid = Array(newSize).fill(null).map(() => Array(newSize).fill(''));
+      }
+      
+      const remoteGrid = data.grid;
+      for (let r = 0; r < newSize; r++) {
+        const remoteRow = remoteGrid[r];
+        if (remoteRow) {
+          for (let c = 0; c < newSize; c++) {
+            const val = remoteRow[c];
+            if (val !== undefined) State.grid[r][c] = val;
+          }
+        }
+      }
     }
 
-    // Safety: unlock input if it's now our turn.
-    const isMyTurn = State.currentPlayer === State.playerRole;
-    if (isMyTurn && State.gameActive) {
+    if (State.currentPlayer === State.playerRole && State.gameActive) {
       State.isProcessing = false;
     }
 
-    // ── Re-render ────────────────────────────────────────────────────
-    if (oldSize > 0 && State.gridSize > oldSize) {
-      // Rebuild immediately so the DOM matches the new State.gridSize
-      Render.buildGrid(State.gridSize, oldSize);
-      Render.animateGridExpand();
-      Render.redrawAllStrikes();
-    } else {
-      // Normal cell sync or immediate rebuild for new game
-      if (oldSize !== State.gridSize) {
-        Render.buildGrid(State.gridSize, oldSize || 0);
-      } else {
-        Render.syncGrid(State.grid);
-      }
-      Render.redrawAllStrikes();
-    }
-
+    // ── UI Synchronisation ───────────────────────────────────────────
     Render.updateScore('X');
     Render.updateScore('O');
+
+    if (newSize > oldSize && oldSize > 0) {
+      Render.buildGrid(newSize, oldSize);
+      Render.animateGridExpand();
+      Render.redrawAllStrikes();
+    } else if (newSize !== oldSize || !document.querySelector('.cell')) {
+      Render.buildGrid(newSize);
+    } else {
+      Render.syncGrid(State.grid);
+    }
+
     Render.updateTurnIndicator();
 
-    // ── Handle remote game-over ──────────────────────────────────────
     if (!State.gameActive && App.currentScreen === 'game') {
-      // Dynamically import game.js to call endGame without a circular
-      // static import (game.js already imports multiplayer.js)
-      import('./game.js').then(module => {
-        const winner = State.winner ||
-          (State.scores.X === State.scores.O ? 'draw' :
-           (State.scores.X > State.scores.O ? 'X' : 'O'));
-        module.endGame(winner, 'classic');
-      }).catch(err => {
-        console.error('Failed to load game module for endGame:', err);
-        // Fallback: at least stop the game locally
-        State.gameActive = false;
-        App.showScreen('gameover');
-      });
+      const winner = data.winner || (State.scores.X > State.scores.O ? 'X' : (State.scores.O > State.scores.X ? 'O' : 'draw'));
+      setTimeout(() => {
+        import('./game.js').then(game => {
+          game.endGame(winner, 'classic');
+        });
+      }, 500);
     }
   },
 
@@ -827,11 +799,11 @@ export const Multiplayer = {
       }
     }
 
-    // ── Reset local multiplayer state ────────────────────────────────
     State.isMultiplayer = false;
     State.roomCode      = null;
     State.gameActive    = false;
     State.rematchRequests = { X: false, O: false };
+    State.lastSyncTimestamp = null; // Reset sync clock
     clearTimers();
 
     // Hide any open popups
@@ -1133,18 +1105,15 @@ export const Multiplayer = {
     // Hide popup if open
     App.hideRematchPopup();
 
-    // Reset rematch request state
+    // Reset rematch request state locally
     State.rematchRequests = { X: false, O: false };
-
-    // Clear rematch request from Firebase to stop the listener
-    const roomRef = db.ref(`rings/${State.roomCode}`);
-    roomRef.child('rematchRequest').remove();
-
-    // Show toast
-    App.showToast('Both players ready! Starting rematch...');
 
     // Start the game (host handles the actual game start)
     if (State.playerRole === 'X') {
+      // Clear rematch request from Firebase only on Host to avoid race conditions
+      const roomRef = db.ref(`rings/${State.roomCode}`);
+      roomRef.child('rematchRequest').remove();
+      
       this.hostStartGame();
     }
     // Guest will be notified via the existing room status listener

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ttg-v3'; // Static version increment
+const CACHE_NAME = 'ttg-v4'; // Static version increment
 const ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,10 @@ const ASSETS = [
   './js/confetti.js',
   './js/svg.js',
   './js/utils.js',
+  './js/i18n.js',
+  './js/tutorial.js',
+  './js/utils/animation.js',
+  './js/utils/colors.js',
   './manifest.json',
   './fonts/Excalifont-Regular.woff2',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
@@ -46,7 +50,8 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// Stale-while-revalidate strategy
+// Cache-First with Network Fallback (for assets)
+// This is safer for consistency during a single session.
 self.addEventListener('fetch', (e) => {
   // Skip Firebase and non-GET requests
   if (e.request.method !== 'GET' || e.request.url.includes('google-analytics') || e.request.url.includes('firebase')) {
@@ -54,17 +59,23 @@ self.addEventListener('fetch', (e) => {
   }
 
   e.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(e.request).then((cachedResponse) => {
-        const fetchedResponse = fetch(e.request).then((networkResponse) => {
-          cache.put(e.request, networkResponse.clone());
-          return networkResponse;
-        }).catch(() => {
-          // Silent fail for network errors if we have a cache
-          return null;
-        });
+    caches.match(e.request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
 
-        return cachedResponse || fetchedResponse;
+      return fetch(e.request).then((networkResponse) => {
+        // Cache the new resource
+        if (networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(e.request, responseClone);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        // Return null if offline and not in cache
+        return null;
       });
     })
   );

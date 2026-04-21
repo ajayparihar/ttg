@@ -223,6 +223,16 @@ export const Render = {
     const cell = this.getCell(r, c);
     if (!cell) return;
 
+    // Check if the cell is already marked with the correct player
+    if (cell.classList.contains('marked')) {
+      if (cell.classList.contains(`${player.toLowerCase()}-marked`)) {
+        return; // Already has the correct marker
+      }
+      // If it's marked with the WRONG player (shouldn't happen), clear it first
+      cell.classList.remove('x-marked', 'o-marked');
+      cell.innerHTML = '';
+    }
+
     // Check if the ghost preview matches — if so, promote it in place
     const ghostSvg = cell.querySelector('.cell-ghost svg');
     if (ghostSvg && ghostSvg.classList.contains(`${player.toLowerCase()}-mark`)) {

@@ -150,6 +150,17 @@ document.addEventListener('DOMContentLoaded', () => {
       handleGridNavigation(e);
     }
   });
+
+  /* ---- 6. Handle window resize (responsiveness) ---- */
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (App.currentScreen === 'game') {
+        Render.buildGrid(State.gridSize);
+      }
+    }, 250); // Debounce resize events
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
