@@ -47,6 +47,13 @@ export const LEVEL = 6;
  */
 export const MODE = false;
 
+/**
+ * Feature flag controlling the undo button.
+ *   - `true`  → show undo button (single use per game).
+ *   - `false` → hide undo button entirely.
+ */
+export const UNDO_ENABLED = false;
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  LAYOUT CONSTANTS
 // ═══════════════════════════════════════════════════════════════════════════

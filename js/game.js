@@ -19,6 +19,7 @@
 import { State } from './state.js';
 import { Render, setCellClickHandler } from './render.js';
 import { AI } from './ai.js';
+import { UNDO_ENABLED } from './constants.js';
 import {
   copyGrid,
   isGridFull,

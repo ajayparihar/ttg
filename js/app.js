@@ -22,7 +22,7 @@
 
 import { State } from './state.js';
 import { Render } from './render.js';
-import { MODE, ZOOM_STEP, MAX_ZOOM } from './constants.js';
+import { MODE, ZOOM_STEP, MAX_ZOOM, UNDO_ENABLED } from './constants.js';
 import { createGrid } from './grid.js';
 import { clearTimers, triggerAI, endGame } from './game.js';
 import { clamp } from './utils.js';
@@ -231,7 +231,7 @@ export const App = {
     undoBtn.disabled = false;
     undoBtn.classList.remove('used');
     undoBtn.title = 'Undo last move (1 use)';
-    undoBtn.style.visibility = State.isMultiplayer ? 'hidden' : 'visible';
+    undoBtn.style.visibility = UNDO_ENABLED ? 'visible' : 'hidden';
 
     // Show/hide multiplayer-only reactions
     const reactContainer = document.getElementById('reaction-container');
@@ -271,6 +271,7 @@ export const App = {
    * undo button, and rebuilds the board.
    */
   undo() {
+    if (!UNDO_ENABLED) return;                                               // Undo is disabled by constant
     if (State.undoUsed || !State.undoSnapshot || !State.gameActive) return;
     if (State.isMultiplayer) return;                                         // Undo is disabled online
     if (State.mode === 'single' && State.currentPlayer === 'O') return;     // Can't undo during AI's turn
