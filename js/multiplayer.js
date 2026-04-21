@@ -287,6 +287,12 @@ export const Multiplayer = {
           this._syncFromRemote(data.gameState);
           if (App.currentScreen !== 'game') {
             App.showScreen('game');
+            // Show reaction UI for guest during rematch
+            const reactContainer = document.getElementById('reaction-container');
+            if (reactContainer) {
+              reactContainer.style.display = 'flex';
+              App.updateReactionTray();
+            }
             this._startSyncListeners();
           }
         }
