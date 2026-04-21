@@ -427,9 +427,6 @@ export const Multiplayer = {
     this._syncFromRemote(remoteState);
     App.showScreen('game');
 
-    // Sync HUD elements specifically for the guest
-    document.getElementById('mode-badge').textContent = 'Online';
-
     // Deferred build to let the screen layout settle
     setTimeout(() => {
       Render.buildGrid(State.gridSize);

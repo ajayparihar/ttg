@@ -177,47 +177,11 @@ export const Render = {
     this.updateGridBorder();
     this.updateGridSizeBadge();
 
-    // Show coordinate labels (A1, B2...) only for 5x5 and larger grids
-    if (gridSize >= 5) {
-      this._addGridCoordinates(gridEl, gridSize, gap, padding);
-    }
-
     // Redraw all persistent strike lines after the DOM rebuild
     this.redrawAllStrikes();
 
     // Reset keyboard navigation focus since DOM was rebuilt
     resetKeyboardFocus();
-  },
-
-  /**
-   * Adds A1, B2 style coordinate labels around the grid edges.
-   * Only shown for 5x5 and larger grids to help with communication.
-   * @private
-   */
-  _addGridCoordinates(gridEl, gridSize, gap, padding) {
-    // Column labels (A, B, C...) at top
-    for (let c = 0; c < gridSize; c++) {
-      const label = document.createElement('div');
-      label.className = 'grid-coord grid-coord-col';
-      label.textContent = this._numberToLetter(c);
-      label.style.position = 'absolute';
-      label.style.top = `${padding - 18}px`;
-      label.style.left = `${padding + c * (this.cellSize + gap) + this.cellSize / 2}px`;
-      label.style.transform = 'translateX(-50%)';
-      gridEl.appendChild(label);
-    }
-
-    // Row labels (1, 2, 3...) at left
-    for (let r = 0; r < gridSize; r++) {
-      const label = document.createElement('div');
-      label.className = 'grid-coord grid-coord-row';
-      label.textContent = (r + 1).toString();
-      label.style.position = 'absolute';
-      label.style.left = `${padding - 20}px`;
-      label.style.top = `${padding + r * (this.cellSize + gap) + this.cellSize / 2}px`;
-      label.style.transform = 'translateY(-50%)';
-      gridEl.appendChild(label);
-    }
   },
 
   /**
@@ -617,12 +581,12 @@ export const Render = {
   /**
    * Briefly animates the grid element when the board size increases.
    * The `grid-expanding` class triggers a CSS scale pulse, removed
-   * after 500 ms.
+   * after 200 ms.
    */
   animateGridExpand() {
     const gridEl = document.getElementById('game-grid');
     gridEl.classList.add('grid-expanding');
-    setTimeout(() => gridEl.classList.remove('grid-expanding'), 500);
+    setTimeout(() => gridEl.classList.remove('grid-expanding'), 200);
   },
 
   // ─────────────────────────────────────────────────────────────────────

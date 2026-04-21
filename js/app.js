@@ -144,8 +144,8 @@ export const App = {
       btn.classList.toggle('selected', parseInt(btn.dataset.dur, 10) === dur);
     });
 
-    // Short delay lets the selection highlight show before the transition
-    setTimeout(() => this.showScreen('name'), 150);
+    // Quick transition to name input
+    setTimeout(() => this.showScreen('name'), 50);
 
     // Hide the O-name field in single-player mode
     document.getElementById('name-o-group').style.display =
@@ -225,8 +225,6 @@ export const App = {
     // ── Sync HUD with new State ──────────────────────────────────────
     Render.updateScore('X');
     Render.updateScore('O');
-    document.getElementById('mode-badge').textContent =
-      State.isMultiplayer ? 'Online' : (State.mode === 'single' ? 'AI' : 'Local');
 
     // Reset the one-shot undo button
     const undoBtn = document.getElementById('undo-btn');
@@ -244,23 +242,18 @@ export const App = {
 
     this.showScreen('game');
 
-    // ── Deferred grid build (allows screen layout to settle) ─────────
-    setTimeout(() => {
-      Render.buildGrid(3);
-      Render.setZoomDisplay(1.0);
-      Render.updateTurnIndicator();
-      Render.updateTurnIndicator();
+    // ── Build grid immediately ─────────
+    Render.buildGrid(3);
+    Render.setZoomDisplay(1.0);
+    Render.updateTurnIndicator();
 
-      // If the AI was randomly chosen to go first, trigger it immediately
-      if (State.mode === 'single' && State.currentPlayer === 'O') {
-        triggerAI();
-      }
+    // If the AI was randomly chosen to go first, trigger it immediately
+    if (State.mode === 'single' && State.currentPlayer === 'O') {
+      triggerAI();
+    }
 
-      this.showToast(`${State.names[State.currentPlayer]} goes first!`, 1500);
-    }, 100);
+    this.showToast(`${State.names[State.currentPlayer]} goes first!`, 1500);
   },
-
-
 
   // ─────────────────────────────────────────────────────────────────────
   //  Undo (one-shot per game)
@@ -639,7 +632,7 @@ export const App = {
     this.initGame();
     setTimeout(() => {
       Tutorial.start();
-    }, 500);
+    }, 200);
   },
 
   // ─────────────────────────────────────────────────────────────────────

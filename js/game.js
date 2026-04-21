@@ -166,7 +166,7 @@ function _processMoveOn3x3() {
 
   if (win) {
     Render.drawWinStrike(win.cells, win.winner);
-    setTimeout(() => endGame(win.winner, 'classic'), 600);
+    setTimeout(() => endGame(win.winner, 'classic'), 350);
     return;
   }
 
@@ -228,7 +228,7 @@ function _processMoveOnLargeGrid(r, c, player) {
   const winningLine = _findFullChainWin(r, c, player);
   if (winningLine) {
     Render.drawWinStrike(winningLine, player);
-    setTimeout(() => endGame(player, 'classic'), 600);
+    setTimeout(() => endGame(player, 'classic'), 350);
     return;
   }
 
@@ -300,7 +300,7 @@ export function switchTurn() {
 
 /**
  * Shows the "AI thinking…" indicator and schedules the AI's move after
- * a randomised delay (500–2500 ms).
+ * a short delay (150–400 ms).
  *
  * The delay prevents the AI from feeling instantaneous and gives the
  * human player a moment to observe the board after their own move.
@@ -309,8 +309,8 @@ export function triggerAI() {
   State.isThinking = true;
   Render.updateTurnIndicator();
 
-  // Randomised thinking delay for a more natural feel
-  const delay = 500 + Math.random() * 2000;
+  // Snappy thinking delay — just enough to feel responsive
+  const delay = 150 + Math.random() * 250;
 
   State.aiTimeout = setTimeout(() => {
     State.isThinking = false;
@@ -359,7 +359,6 @@ export function expandGrid() {
 
   // Short delay lets the CSS animation finish before the DOM rebuild
   setTimeout(() => {
-    App.showToast(i18n.t('board_grows'));
     Render.buildGrid(State.gridSize, oldSize);
     State.isProcessing = false;
     
