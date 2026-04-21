@@ -88,6 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
     Multiplayer.joinRoom();
   }
 
+  /* ---- 6. Initialize OTP input behaviour ---- */
+  App.initOTPInputs();
+
   /* ---- 6. Name-input field behaviour ---- */
 
   // Clear any browser-autofilled values so the placeholder text shows

@@ -99,6 +99,52 @@ export const App = {
   },
 
   /**
+   * Wires up the 4-digit OTP input fields for joining rooms.
+   * Handles auto-focus, backspace, and automatic joining on completion.
+   */
+  initOTPInputs() {
+    const inputs = document.querySelectorAll('.otp-input');
+    inputs.forEach((input, index) => {
+      // Focus next on input
+      input.addEventListener('input', (e) => {
+        const val = e.target.value.toUpperCase();
+        e.target.value = val; // Force uppercase
+
+        if (val.length === 1 && index < inputs.length - 1) {
+          inputs[index + 1].focus();
+        }
+        // Auto-join if last box filled
+        if (index === inputs.length - 1 && val.length === 1) {
+          Multiplayer.joinRoom();
+        }
+      });
+
+      // Handle backspace
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !input.value && index > 0) {
+          inputs[index - 1].focus();
+        }
+        if (e.key === 'Enter' && index === inputs.length - 1 && input.value) {
+          Multiplayer.joinRoom();
+        }
+      });
+
+      // Paste support
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const data = e.clipboardData.getData('text').toUpperCase().trim().slice(0, 4);
+        [...data].forEach((char, i) => {
+          if (inputs[i]) {
+            inputs[i].value = char;
+            if (i < inputs.length - 1) inputs[i+1].focus();
+          }
+        });
+        if (data.length === 4) Multiplayer.joinRoom();
+      });
+    });
+  },
+
+  /**
    * Navigates back to a previous screen.
    * @param {string} to - Target screen id (e.g. `'menu'`).
    */
@@ -167,6 +213,7 @@ export const App = {
     State.paused        = false;
     State.lastGridSize  = 3;
     State.lastMove      = null;
+    State.isProcessing  = false; // Ensure input is unlocked at game start
 
     // ── Sync HUD with new State ──────────────────────────────────────
     Render.updateScore('X');

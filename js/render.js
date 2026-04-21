@@ -499,12 +499,16 @@ export const Render = {
    */
   redrawAllStrikes() {
     const gridEl = document.getElementById('game-grid');
+    if (!gridEl) return;
 
-    // Remove old SVG overlay and cell highlight classes
-    gridEl.querySelectorAll('.win-strike-svg').forEach(s => s.remove());
+    // We'll replace the existing SVG whole-sale to prevent flickers
+    const oldSvg = gridEl.querySelector('.win-strike-svg');
     document.querySelectorAll('.win-cell').forEach(cell => cell.classList.remove('win-cell'));
 
-    if (State.scoredLines.length === 0) return;
+    if (State.scoredLines.length === 0) {
+      if (oldSvg) oldSvg.remove();
+      return;
+    }
 
     // --- Create a single SVG element sized to cover the entire grid ---
     const cs      = this.cellSize;
@@ -587,7 +591,14 @@ export const Render = {
     }
 
     gridEl.style.position = 'relative';
-    gridEl.appendChild(svg);
+
+    // Atomic swap: replace the old SVG with the new one in a single DOM operation
+    // This prevents the "blank frame" flicker during redraws.
+    if (oldSvg) {
+      gridEl.replaceChild(svg, oldSvg);
+    } else {
+      gridEl.appendChild(svg);
+    }
   },
 
   // ─────────────────────────────────────────────────────────────────────

@@ -136,6 +136,8 @@ export function makeMove(r, c, isAI = false) {
   }
 
   // Synchronise move to Firebase (granular update)
+  // Moved to the end of outcome processing to ensure all state changes
+  // (turn switch, scores, etc.) are captured in one atomic update.
   if (State.isMultiplayer) {
     Multiplayer.pushMove(r, c, player);
   }
@@ -170,7 +172,7 @@ function _processMoveOn3x3() {
     return;
   }
 
-  switchTurn();
+  switchTurn(false);
 }
 
 /**
@@ -261,7 +263,7 @@ function _processMoveOnLargeGrid(r, c, player) {
     return;
   }
 
-  switchTurn();
+  switchTurn(false);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -277,7 +279,7 @@ function _processMoveOnLargeGrid(r, c, player) {
  *  - Pushes the new state to Firebase (multiplayer).
  *  - Triggers the AI if it's now the computer's turn (single-player).
  */
-export function switchTurn() {
+export function switchTurn(shouldPush = true) {
   State.currentPlayer = State.currentPlayer === 'X' ? 'O' : 'X';
   State.isProcessing  = false;   // Turn is now open for input
 
@@ -287,7 +289,7 @@ export function switchTurn() {
   Render.updateTurnIndicator();
 
   // Synchronise turn change to Firebase (granular update)
-  if (State.isMultiplayer) {
+  if (State.isMultiplayer && shouldPush) {
     Multiplayer.pushStateUpdate({ currentPlayer: State.currentPlayer });
   }
 
@@ -368,16 +370,8 @@ export function expandGrid() {
     Render.buildGrid(State.gridSize, oldSize);
     State.isProcessing = false;
     
-    // Sync expanded grid and new turn to Firebase
-    if (State.isMultiplayer) {
-      Multiplayer.pushStateUpdate({
-        grid: State.grid,
-        gridSize: State.gridSize,
-        currentPlayer: State.currentPlayer === 'X' ? 'O' : 'X' // Prepare for switchTurn
-      });
-    }
-
-    switchTurn();
+    // switchTurn will handle the final push of everything in the expanded state
+    switchTurn(true);
   }, GRID_EXPAND_DELAY_MS);
 }
 

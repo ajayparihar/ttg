@@ -386,10 +386,12 @@ export const Multiplayer = {
     roomRef.onDisconnect().update({ status: 'abandoned' });
 
     // ── Write guest data to Firebase ─────────────────────────────────
+    const guestName = State.userProfile?.name || State.names.O || 'Guest';
+
     await roomRef.update({
       guestId:     State.userId,
-      guestName:   State.names.O || 'Guest',
-      playerOName: State.names.O || 'Guest',
+      guestName:   guestName,
+      playerOName: guestName,
       status:      'ready'
     });
 
@@ -583,21 +585,29 @@ export const Multiplayer = {
   },
 
   /**
-   * Efficiently pushes a single move and associated state changes.
+   * Efficiently pushes a single move and all associated state changes in one
+   * atomic transaction. This prevents race conditions where an opponent
+   * might receive a move update but not a turn update.
+   *
    * @param {number} r - Row index.
    * @param {number} c - Column index.
-   * @param {string} player - 'X' or 'O'.
+   * @param {string} player - The mark ('X' or 'O') just placed.
+   * @param {boolean} [isExpansion=false] - Whether this move caused an expansion.
    */
-  pushMove(r, c, player) {
-    this.pushStateUpdate({
-      [`grid/${r}/${c}`]: player,
-      currentPlayer: State.currentPlayer,
-      scores: State.scores,
-      scoredChains: Array.from(State.scoredChains),
-      scoredLines: State.scoredLines,
-      gameActive: State.gameActive,
-      winner: State.winner || null
-    });
+  pushMove(r, c, player, isExpansion = false) {
+    if (!State.isMultiplayer || !State.roomCode) return;
+
+    // Use update for better atomicity at the gameState level
+    const updateObj = {
+      ...this._getSerializableState(),
+      // Ensure the cell mark is explicitly included even if grid was just updated
+      [`grid/${r}/${c}`]: player
+    };
+
+    // If it's an expansion, we might have multiple cells to update (the new row/col)
+    // but _getSerializableState already grabs State.grid, which is correct.
+
+    db.ref(`rings/${State.roomCode}/gameState`).update(updateObj);
   },
 
   /**
@@ -623,6 +633,7 @@ export const Multiplayer = {
       scoredLines:    State.scoredLines,
       gameActive:     State.gameActive,
       winner:         State.winner || null,
+      lastMove:       State.lastMove,                   // Sync move indicator
       lastModifiedBy: State.userId,                     // Echo-guard
       timestamp:      firebase.database.ServerValue.TIMESTAMP
     };
@@ -689,8 +700,10 @@ export const Multiplayer = {
     State.gridSize      = newSize;
     State.currentPlayer = data.currentPlayer;
     State.duration      = data.duration || 0;
-    State.scores        = data.scores;
-    State.names         = data.names;
+    State.scores        = data.scores || State.scores;
+    State.names         = data.names || State.names;
+    State.lastMove      = data.lastMove || null;
+
     // Validate scoredChains is an array (Firebase may return object if data corrupted)
     const chainsArray = Array.isArray(data.scoredChains) ? data.scoredChains : [];
     State.scoredChains  = new Set(chainsArray);
@@ -703,26 +716,33 @@ export const Multiplayer = {
       State.timeLeft = State.duration;
     }
 
-    // Safety: unlock input if it's now our turn AND we're not in the middle
-    // of a local animation. This prevents race conditions where both the local
-    // switchTurn() and remote sync try to unlock simultaneously.
+    // Safety: unlock input if it's now our turn.
     const isMyTurn = State.currentPlayer === State.playerRole;
-    const wasWaiting = State.isProcessing;
-    if (isMyTurn && State.gameActive && wasWaiting) {
-      // Additional check: only unlock if remote timestamp is newer than our last move
-      // to prevent stale syncs from unlocking prematurely
-      if (data.timestamp && data.lastModifiedBy !== State.userId) {
+    if (isMyTurn && State.gameActive) {
+      // If we just received a remote update that makes it our turn,
+      // we MUST be unlocked, unless we are in the middle of a local action
+      // that we're still waiting for (unlikely given the lastModifiedBy check).
+      if (data.lastModifiedBy !== State.userId) {
         State.isProcessing = false;
       }
     }
 
     // ── Re-render ────────────────────────────────────────────────────
-    if (oldSize !== State.gridSize) {
-      // Grid expanded — full DOM rebuild with expansion animation
-      Render.buildGrid(State.gridSize, oldSize);
+    if (oldSize > 0 && State.gridSize > oldSize) {
+      // Grid expanded — play the expansion animation first
+      Render.animateGridExpand();
+      setTimeout(() => {
+        Render.buildGrid(State.gridSize, oldSize);
+        Render.redrawAllStrikes(); // Redraw score lines on the new grid size
+      }, GRID_EXPAND_DELAY_MS);
     } else {
-      // Same size — incremental cell sync (smoother)
-      Render.syncGrid(State.grid);
+      // Normal cell sync or immediate rebuild for new game
+      if (oldSize !== State.gridSize) {
+        Render.buildGrid(State.gridSize, oldSize || 0);
+      } else {
+        Render.syncGrid(State.grid);
+      }
+      Render.redrawAllStrikes();
     }
 
     Render.updateScore('X');

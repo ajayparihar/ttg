@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ttg-v' + new Date().toISOString().slice(0,10).replace(/-/g,'');
+const CACHE_NAME = 'ttg-v3'; // Static version increment
 const ASSETS = [
   './',
   './index.html',
@@ -46,9 +46,26 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Stale-while-revalidate strategy
 self.addEventListener('fetch', (e) => {
+  // Skip Firebase and non-GET requests
+  if (e.request.method !== 'GET' || e.request.url.includes('google-analytics') || e.request.url.includes('firebase')) {
+    return;
+  }
+
   e.respondWith(
-    caches.match(e.request)
-      .then((res) => res || fetch(e.request))
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(e.request).then((cachedResponse) => {
+        const fetchedResponse = fetch(e.request).then((networkResponse) => {
+          cache.put(e.request, networkResponse.clone());
+          return networkResponse;
+        }).catch(() => {
+          // Silent fail for network errors if we have a cache
+          return null;
+        });
+
+        return cachedResponse || fetchedResponse;
+      });
+    })
   );
 });
